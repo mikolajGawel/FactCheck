@@ -1,6 +1,6 @@
-
+import { serverAddress } from "./config";
 (() => {
-  const serverAddress = "http://localhost:3000"
+  
 
   async function runJob() {
 
