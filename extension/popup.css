@@ -1,0 +1,81 @@
+body {
+	min-width: 320px;
+	font-family: Arial, Helvetica, sans-serif;
+	color: #111;
+	background: #f8f8f8;
+	margin: 0;
+}
+
+.container {
+	padding: 12px;
+}
+
+h1 {
+	font-size: 16px;
+	margin: 0 0 8px 0;
+}
+
+#articlesContainer {
+	max-height: 340px;
+	overflow-y: auto;
+	border: 1px solid #dcdcdc;
+	background: #fff;
+	padding: 6px;
+	margin-bottom: 8px;
+}
+
+.article-item {
+	display: flex;
+	gap: 8px;
+	align-items: center;
+	padding: 6px 8px;
+	border-radius: 6px;
+	cursor: pointer;
+}
+
+.article-item:hover {
+	background: #f0f8ff;
+}
+
+.article-item.selected {
+	background: #dbeeff;
+	outline: 2px solid #77aaff;
+}
+
+.article-title {
+	font-size: 14px;
+	font-weight: 600;
+}
+
+.article-meta {
+	font-size: 12px;
+	color: #666;
+}
+
+.controls {
+	display: flex;
+	gap: 8px;
+	align-items: center;
+}
+
+button {
+	background: #1976d2;
+	border: none;
+	color: #fff;
+	padding: 8px 12px;
+	border-radius: 6px;
+	cursor: pointer;
+}
+
+button[disabled] {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+.status {
+	font-size: 12px;
+}
+
+.loading {
+	color: #666;
+}
