@@ -13,7 +13,7 @@ chrome.action.onClicked.addListener(async tab => {
 			try {
 				await chrome.scripting.executeScript({
 					target: { tabId: tab.id },
-					files: ["content.js"]
+					files: ["dist/content.js"]
 				});
 				// After injecting, send the start message
 				chrome.tabs.sendMessage(tab.id, { type: "startJob" });
