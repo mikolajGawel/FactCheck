@@ -108,16 +108,22 @@ startBtn.addEventListener("click", async () => {
 	if (!tab || !tab.id) return;
 	startBtn.disabled = true;
 	statusEl.textContent = "Starting job…";
-	chrome.tabs.sendMessage(tab.id, { type: "startJob", articleId: selectedId }, resp => {
-		if (chrome.runtime.lastError) {
-			statusEl.textContent = `Failed to start job: ${chrome.runtime.lastError.message}`;
-			startBtn.disabled = false;
-			return;
+
+	const article = articles.find(a => a.id === selectedId);
+	chrome.tabs.sendMessage(
+		tab.id,
+		{ type: "startJob", articleId: selectedId, title: article?.title ?? null, url: tab.url },
+		resp => {
+			if (chrome.runtime.lastError) {
+				statusEl.textContent = `Failed to start job: ${chrome.runtime.lastError.message}`;
+				startBtn.disabled = false;
+				return;
+			}
+			statusEl.textContent = "Job started";
+			// Optionally show the selected content snippet
+			// disable start button to avoid duplicates
 		}
-		statusEl.textContent = "Job started";
-		// Optionally show the selected content snippet
-		// disable start button to avoid duplicates
-	});
+	);
 });
 
 loadArticles();

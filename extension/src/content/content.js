@@ -14,16 +14,18 @@ if (!window.__FactCheck_injected) {
 		if (!message || !message.type) return false;
 
 		if (message.type === "startJob") {
-			// message can contain { articleId } or { content }
+			// message can contain { articleId } or { content } and optional { title, url }
+			const meta = { title: message.title ?? null, url: message.url ?? null };
 			if (message.articleId !== undefined) {
 				const text = collectArticleText(message.articleId);
-				runJob(text).catch(err => console.error("runJob error:", err));
+				runJob(text, meta).catch(err => console.error("runJob error:", err));
 			} else if (message.content) {
-				runJob(message.content).catch(err => console.error("runJob error:", err));
+				runJob(message.content, meta).catch(err => console.error("runJob error:", err));
 			} else {
 				// fallback to whole page
-				runJob().catch(err => console.error("runJob error:", err));
+				runJob(undefined, meta).catch(err => console.error("runJob error:", err));
 			}
+
 			sendResponse({ status: "job_started" });
 			return true;
 		}
