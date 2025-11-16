@@ -1,3 +1,5 @@
+import { highlightText } from "./factHighlight.js";
+
 const serverAddress = process.env.SERVER;
 
 /**
@@ -26,7 +28,9 @@ export async function runJob(textContent, meta = {}) {
 		const statusRes = await fetch(`${serverAddress}/status?id=${job_id}`);
 		const status = await statusRes.json();
 		if (status.status === "done") {
+			highlightText(status.result);
 			console.log("Wynik:", status.result);
+
 			done = true;
 		} else {
 			console.log("Czekam...");
