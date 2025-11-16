@@ -13,18 +13,18 @@ export function normalizeArticleText(raw) {
 		.trim();
 }
 
-export function segmentSentences(text, language = "en") {
+export function segmentSentences(text: string, language = "en") {
 	if (!text) return [];
 
-	const sentences = [];
-	if (typeof Intl !== "undefined" && typeof Intl.Segmenter === "function") {
-		const segmenter = new Intl.Segmenter(language, { granularity: "sentence" });
+	const sentences: { id: number; text: string; start: number; end: number }[] = [];
+	if (typeof Intl !== "undefined" && typeof (Intl as any).Segmenter === "function") {
+		const segmenter = new (Intl as any).Segmenter(language, { granularity: "sentence" });
 		for (const segment of segmenter.segment(text)) {
 			pushSentence(sentences, text, segment.index, segment.segment.length);
 		}
 	} else {
 		const fallbackRegex = /[^.!?]+[.!?]+|[^.!?]+$/g;
-		let match;
+		let match: RegExpExecArray | null;
 		while ((match = fallbackRegex.exec(text)) !== null) {
 			pushSentence(sentences, text, match.index, match[0].length);
 		}
@@ -33,7 +33,7 @@ export function segmentSentences(text, language = "en") {
 	return sentences;
 }
 
-export function limitSentences(sentences, maxCount) {
+export function limitSentences<T>(sentences: T[], maxCount?: number) {
 	if (!maxCount || sentences.length <= maxCount) {
 		return sentences;
 	}
@@ -41,7 +41,7 @@ export function limitSentences(sentences, maxCount) {
 	return sentences.slice(0, maxCount);
 }
 
-function pushSentence(bucket, source, startIndex, rawLength) {
+function pushSentence(bucket, source: string, startIndex: number, rawLength: number) {
 	if (typeof startIndex !== "number" || typeof rawLength !== "number") {
 		return;
 	}

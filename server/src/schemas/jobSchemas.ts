@@ -2,9 +2,7 @@ import { z } from "zod";
 
 export const StartRequestSchema = z.object({
 	content: z
-		.string({
-			required_error: "Pole 'content' jest wymagane"
-		})
+		.string()
 		.min(200, "Treść artykułu musi mieć co najmniej 200 znaków")
 		.max(25000, "Treść artykułu jest zbyt długa (limit 25k znaków)"),
 	title: z.string().max(512).trim().optional(),

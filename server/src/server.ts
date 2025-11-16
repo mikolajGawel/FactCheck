@@ -12,6 +12,8 @@ config({
 });
 
 const { default: app } = await import("./app.js");
-app.listen(process.env.PORT, () => {
-	console.log(`Server listening on http://localhost:${process.env.PORT}`);
+
+const port = Number(process.env.PORT ?? 3000);
+app.listen(port, () => {
+	console.log(`Server listening on http://localhost:${port}`);
 });

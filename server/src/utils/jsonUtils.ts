@@ -1,4 +1,4 @@
-export function extractJsonObject(raw) {
+export function extractJsonObject(raw: string) {
 	if (!raw) {
 		throw new Error("Model nie zwrócił żadnych danych JSON");
 	}

@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+// removed explicit express types on handler parameters to allow type inference
 import { analyzeArticleSentences } from "../services/analyzer.js";
 import { StartRequestSchema } from "../schemas/jobSchemas.js";
 import { ensureJobBucket, getJob, buildJobRecord, getJobBucket } from "../services/jobsService.js";
@@ -39,7 +40,7 @@ export async function recvRequest(req, res) {
 
 export async function getResult(req, res) {
 	const ip = resolveIp(req);
-	const id = req.query.id;
+	const id = req.query.id as string;
 	if (!id) {
 		return res.status(400).json({ error: "Brak parametru 'id'" });
 	}
@@ -86,7 +87,7 @@ async function processContent({ payload, ip, jobId, cacheKey }) {
 			writeCache(cacheKey, enrichedResult);
 		}
 		console.log(`[JOB ${jobId}] zakończone dla IP ${ip}`);
-	} catch (error) {
+	} catch (error: any) {
 		const job = getJob(ip, jobId);
 		if (job) {
 			job.status = "error";
@@ -98,5 +99,9 @@ async function processContent({ payload, ip, jobId, cacheKey }) {
 }
 
 function resolveIp(req) {
-	return req.headers["x-forwarded-for"]?.split(",")[0]?.trim() || req.socket?.remoteAddress || "unknown";
+	return (
+		(req.headers["x-forwarded-for"] as string | undefined)?.split(",")[0]?.trim() ||
+		req.socket?.remoteAddress ||
+		"unknown"
+	);
 }

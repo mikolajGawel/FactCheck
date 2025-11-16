@@ -6,17 +6,17 @@ import { fileURLToPath } from "node:url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// In-memory map backed by a JSON file on disk
-const cacheStore = new Map();
+type CacheValue = { result: any; expiresAt: number };
 
-// Keep TTL defined for future use but we won't enforce it for now
+const cacheStore = new Map<string, CacheValue>();
+
 const CACHE_TTL_MS = Number(process.env.ANALYZER_CACHE_TTL_MS ?? 10 * 60 * 1000);
 const CACHE_FILE = process.env.ANALYZER_CACHE_FILE ?? path.resolve(__dirname, "..", "..", "logs", "cache.json");
 
 function saveCacheToFile() {
 	try {
 		fs.mkdirSync(path.dirname(CACHE_FILE), { recursive: true });
-		const obj = {};
+		const obj: Record<string, CacheValue> = {};
 		for (const [k, v] of cacheStore.entries()) {
 			obj[k] = v;
 		}
@@ -32,7 +32,7 @@ function loadCacheFromFile() {
 			return;
 		}
 		const raw = fs.readFileSync(CACHE_FILE, "utf-8");
-		const parsed = JSON.parse(raw || "{}");
+		const parsed = JSON.parse(raw || "{}") as Record<string, CacheValue>;
 		for (const key of Object.keys(parsed)) {
 			cacheStore.set(key, parsed[key]);
 		}
