@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "start": "node src/server.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node --test"
   },
   "author": "",
   "license": "ISC",
@@ -14,7 +14,7 @@
     "cors": "^2.8.5",
     "dotenv-defaults": "^5.0.2",
     "express": "^5.1.0",
-    "openai": "^4.55.5",
-    "zod": "^3.23.8"
+    "openai": "^6.9.0",
+    "zod": "^4.1.12"
   }
 }

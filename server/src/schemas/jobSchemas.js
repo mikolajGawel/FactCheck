@@ -27,9 +27,7 @@ export const SpanSchema = z
 		end: z.number().int().nonnegative(),
 		text: z.string().min(1),
 		confidence: z.number().min(0).max(1),
-		labels: z.array(z.string().min(1)).optional(),
-		evidence: z.array(EvidenceSchema).optional(),
-		metadata: z.record(z.any()).optional()
+		rationale: z.string().min(1)
 	})
 	.refine(value => value.end > value.start, {
 		message: "Wartość 'end' musi być większa niż 'start'",
@@ -58,7 +56,7 @@ export const SentenceClassificationSchema = z.object({
 	sentenceId: z.number().int().nonnegative(),
 	type: z.enum(["fact", "opinion", "uncertain"]),
 	confidence: z.number().min(0).max(1),
-	rationale: z.string().optional()
+	rationale: z.string()
 });
 
 export const SentenceLLMResponseSchema = z.object({
