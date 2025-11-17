@@ -15,6 +15,10 @@ const TEMPERATURE = Number.isNaN(configuredTemperature) ? 0.1 : configuredTemper
 
 let cachedClient: OpenAI | null = null;
 
+// Track active LLM processing count (for scheduling restarts in development)
+let aiProcessingCount = 0;
+let restartRequested = false;
+
 function getOpenRouterClient() {
 	if (cachedClient) return cachedClient;
 
@@ -82,46 +86,51 @@ export async function analyzeArticleSentences(payload, _context?) {
 
 async function classifySentencesWithLLM(sentences, metadata) {
 	const client = getOpenRouterClient();
-	const payload = sentences.map(({ id, text }) => ({ id, text }));
+	aiProcessingCount++;
+	try {
+		const payload = sentences.map(({ id, text }) => ({ id, text }));
 
-	const instructions = [
-		{
-			role: "system",
-			content:
-				"#Task\nClassify each sentence as 'fact', 'opinion', or 'uncertain'. You shouldn't check if reported news is true or false - only classify based on the sentence structure. Say how certain you are (0 to 1) about each sentence. Provide a brief rationale for your classification.\n\n##Output format\nReturn the results in JSON format (this should be the ONLY output). The outmost json object should have two properties: 'summary' (a brief summary (max 6 sentences) of the article that characterises its quality - is it reliable, biased, misleading, etc.) and 'sentences' (an array of json objects containing classified sentences). Each sentence object should have the following properties: 'sentenceId' (the id of the sentence), 'type' (the classification), 'confidence' (a number between 0 and 1), and 'rationale' (a brief explanation of your classification). Ensure the JSON is properly formatted."
-		},
-		{
-			role: "user",
-			content: stringifyForPrompt({
-				document: {
-					title: metadata.title,
-					language: metadata.language
-				},
-				sentences: payload
-			})
+		const instructions = [
+			{
+				role: "system",
+				content:
+					"#Task\nClassify each sentence as 'fact', 'opinion', or 'uncertain'. You shouldn't check if reported news is true or false - only classify based on the sentence structure. Say how certain you are (0 to 1) about each sentence. Provide a brief rationale for your classification.\n\n##Output format\nReturn the results in JSON format (this should be the ONLY output). The outmost json object should have two properties: 'summary' (a brief summary (max 6 sentences) of the article that characterises its quality - is it reliable, biased, misleading, etc.) and 'sentences' (an array of json objects containing classified sentences). Each sentence object should have the following properties: 'sentenceId' (the id of the sentence), 'type' (the classification), 'confidence' (a number between 0 and 1), and 'rationale' (a brief explanation of your classification). Ensure the JSON is properly formatted."
+			},
+			{
+				role: "user",
+				content: stringifyForPrompt({
+					document: {
+						title: metadata.title,
+						language: metadata.language
+					},
+					sentences: payload
+				})
+			}
+		];
+
+		const completion = await client.chat.completions.create({
+			model: DEFAULT_MODEL as string,
+			temperature: TEMPERATURE,
+			stream: false,
+			// Explicitly cast messages to any to satisfy API typing
+			messages: instructions as any
+		});
+
+		new Promise(resolve => setTimeout(resolve, 3000)).then(() => {
+			console.log("Logging AI call with generation ID:", completion.id);
+			logAICall(completion.id);
+		});
+
+		const rawContent = completion.choices?.[0]?.message?.content;
+		if (!rawContent || typeof rawContent !== "string") {
+			throw new Error("No textual content returned from LLM");
 		}
-	];
-
-	const completion = await client.chat.completions.create({
-		model: DEFAULT_MODEL as string,
-		temperature: TEMPERATURE,
-		stream: false,
-		// Explicitly cast messages to any to satisfy API typing
-		messages: instructions as any
-	});
-
-	new Promise(resolve => setTimeout(resolve, 3000)).then(() => {
-		console.log("Logging AI call with generation ID:", completion.id);
-		logAICall(completion.id);
-	});
-
-	const rawContent = completion.choices?.[0]?.message?.content;
-	if (!rawContent || typeof rawContent !== "string") {
-		throw new Error("No textual content returned from LLM");
+		const parsed = extractJsonObject(rawContent);
+		const parsedValidated = SentenceLLMResponseSchema.parse(parsed);
+		return { ...parsedValidated, _meta: null };
+	} finally {
+		setTimeout(_onLLMCallComplete, 4000);
 	}
-	const parsed = extractJsonObject(rawContent);
-	const parsedValidated = SentenceLLMResponseSchema.parse(parsed);
-	return { ...parsedValidated, _meta: null };
 }
 
 function buildSpansFromClassification(sentences: any[], classifications: any[]) {
@@ -144,4 +153,29 @@ function buildSpansFromClassification(sentences: any[], classifications: any[]) 
 	}
 
 	return spans;
+}
+
+// Expose a few helper functions so other parts of the server (like the dev
+// restart endpoint) can query whether the analyzer is currently working and
+// optionally request a restart once processing is finished.
+export function isAIProcessing() {
+	return aiProcessingCount > 0;
+}
+
+export function requestRestartAfterProcessing() {
+	restartRequested = true;
+	// If there are no active processes, enforce a restart immediately.
+	if (aiProcessingCount === 0) {
+		console.log("No active AI processing, exiting process for restart");
+		setTimeout(() => process.exit(0), 0);
+	}
+}
+
+// Internal helper - call whenever an LLM call completes (success/error)
+function _onLLMCallComplete() {
+	aiProcessingCount = Math.max(0, aiProcessingCount - 1);
+	if (restartRequested && aiProcessingCount === 0) {
+		console.log("AI processing finished and restart was requested. Exiting");
+		setTimeout(() => process.exit(0), 0);
+	}
 }
