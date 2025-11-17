@@ -56,4 +56,7 @@ test("readCache returns null for unknown keys", () => {
 	assert.equal(cacheService.readCache("nonexistent:key"), null);
 });
 
-await cleanup();
+// Ensure the test log file is deleted after all tests finish
+test.after(async () => {
+	await cleanup();
+});

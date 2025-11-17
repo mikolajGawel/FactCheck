@@ -15,13 +15,22 @@ function ensureLogDir() {
 	}
 }
 
-export async function logAICall(entry) {
+export async function logAICall(generationId: string) {
 	try {
 		ensureLogDir();
-		const payload = {
-			ts: new Date().toISOString(),
-			...entry
-		};
+		console.log("Logging AI call with generation ID:", generationId);
+
+		const response = await fetch(`https://openrouter.ai/api/v1/generation?id=${generationId}`, {
+			headers: {
+				Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`
+			}
+		});
+
+		if (!response.ok) {
+			throw new Error(`Failed to fetch generation details: ${response.status} ${response.statusText}`);
+		}
+
+		const payload = await response.json();
 		const line = JSON.stringify(payload);
 		await fs.promises.appendFile(logFile, line + "\n", { encoding: "utf8" });
 	} catch (err) {

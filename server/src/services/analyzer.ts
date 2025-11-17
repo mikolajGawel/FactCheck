@@ -102,7 +102,6 @@ async function classifySentencesWithLLM(sentences, metadata) {
 		}
 	];
 
-	const startTs = Date.now();
 	const completion = await client.chat.completions.create({
 		model: DEFAULT_MODEL as string,
 		temperature: TEMPERATURE,
@@ -111,9 +110,10 @@ async function classifySentencesWithLLM(sentences, metadata) {
 		messages: instructions as any
 	});
 
-	const endTs = Date.now();
-	const meta = { id: completion.id, model: DEFAULT_MODEL, elapsedMs: endTs - startTs, usage: completion.usage ?? null };
-	logAICall(meta);
+	new Promise(resolve => setTimeout(resolve, 3000)).then(() => {
+		console.log("Logging AI call with generation ID:", completion.id);
+		logAICall(completion.id);
+	});
 
 	const rawContent = completion.choices?.[0]?.message?.content;
 	if (!rawContent || typeof rawContent !== "string") {
