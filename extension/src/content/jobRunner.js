@@ -12,6 +12,7 @@ export async function runJob(textContent, meta = {}) {
 	const title = meta.title ?? null;
 	const url = meta.url ?? (typeof location !== "undefined" ? location.href : null);
 	const language = navigator && navigator.language ? navigator.language.split("-")[0] : "en";
+	chrome.runtime.sendMessage({ type: "startJob" });
 
 	const start = await fetch(`${serverAddress}/start`, {
 		method: "POST",
@@ -30,7 +31,7 @@ export async function runJob(textContent, meta = {}) {
 		if (status.status === "done") {
 			highlightText(status.result);
 			console.log("Wynik:", status.result);
-
+			chrome.runtime.sendMessage({ type: "jobCompleted" });
 			done = true;
 		} else {
 			console.log("Czekam...");

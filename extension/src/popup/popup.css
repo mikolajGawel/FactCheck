@@ -18,8 +18,7 @@ h1 {
 #articlesContainer {
 	max-height: 340px;
 	overflow-y: auto;
-	border: 1px solid #dcdcdc;
-	background: #fff;
+	
 	padding: 6px;
 	margin-bottom: 8px;
 }
@@ -77,5 +76,11 @@ button[disabled] {
 }
 
 .loading {
+	border: 1px solid #dcdcdc;
+	background: #fff;
 	color: #666;
+}
+.state img{
+	margin-inline: 10%;
+	width: 70%;
 }
