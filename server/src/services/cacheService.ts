@@ -11,7 +11,18 @@ type CacheValue = { result: any; expiresAt: number };
 const cacheStore = new Map<string, CacheValue>();
 
 const CACHE_TTL_MS = Number(process.env.ANALYZER_CACHE_TTL_MS ?? 10 * 60 * 1000);
-const CACHE_FILE = process.env.ANALYZER_CACHE_FILE ?? path.resolve(__dirname, "..", "..", "logs", "cache.json");
+
+const DEFAULT_CACHE_FILE = path.resolve(process.cwd(), "logs", "cache.json");
+
+function resolveCacheFilePath(): string {
+	const overridePath = process.env.ANALYZER_CACHE_FILE;
+	if (!overridePath) {
+		return DEFAULT_CACHE_FILE;
+	}
+	return path.isAbsolute(overridePath) ? overridePath : path.resolve(process.cwd(), overridePath);
+}
+
+const CACHE_FILE = resolveCacheFilePath();
 
 function saveCacheToFile() {
 	try {
