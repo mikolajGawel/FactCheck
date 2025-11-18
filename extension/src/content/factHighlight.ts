@@ -91,6 +91,17 @@ function wrapRange(range: Range, span: HighlightSpan): HTMLElement {
 	}
 	wrapper.style.backgroundColor = color;
 	wrapper.style.cursor = "pointer";
+	// Preserve layout by ensuring inline display and proper text flow
+	wrapper.style.display = "inline";
+	wrapper.style.whiteSpace = "inherit";
+	wrapper.style.wordWrap = "inherit";
+	wrapper.style.wordBreak = "inherit";
+	wrapper.style.lineHeight = "inherit";
+	wrapper.style.fontSize = "inherit";
+	wrapper.style.fontFamily = "inherit";
+	wrapper.style.fontWeight = "inherit";
+	wrapper.style.fontStyle = "inherit";
+	wrapper.style.textDecoration = "inherit";
 
 	const fragment = range.extractContents();
 	wrapper.appendChild(fragment);
