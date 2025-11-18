@@ -26,8 +26,9 @@ export interface HighlightContext {
 }
 
 const EXTRA_IGNORED_SELECTORS = ["[data-factcheck-ignore]", "[hidden]", "[aria-hidden='true']"];
-
-export const HIGHLIGHT_IGNORE_SELECTOR = [...new Set([...DEFAULT_NOISE_SELECTORS, ...EXTRA_IGNORED_SELECTORS])].join(", ");
+export const HIGHLIGHT_IGNORE_SELECTOR = Array.from(new Set([...DEFAULT_NOISE_SELECTORS, ...EXTRA_IGNORED_SELECTORS])).join(
+	", "
+);
 
 export function collectArticles(): ArticleSummary[] {
 	return getArticleNodes().map((node, idx) => {

@@ -24,29 +24,49 @@ export async function runJob(options: RunJobOptions = {}): Promise<void> {
 	const url = options.meta?.url ?? (typeof location !== "undefined" ? location.href : null);
 	const language = navigator?.language?.split("-")[0] ?? "en";
 
-	chrome.runtime.sendMessage({ type: "startJob" });
-
-	const startResponse = await fetch(`${serverAddress}/start`, {
+	const start = await fetch(`${serverAddress}/start`, {
 		method: "POST",
 		headers: { "Content-Type": "application/json" },
 		body: JSON.stringify({ content: pageContent, title, url, language })
 	});
 
-	const { job_id }: { job_id: string } = await startResponse.json();
+	if (!start.ok) {
+		const errorText = await start.text();
+		console.error("Server start failed:", errorText);
+		chrome.runtime.sendMessage({ type: "jobFailed", error: `Server failed to start job: ${start.status}` });
+		return;
+	}
+
+	const { job_id }: { job_id: string } = await start.json();
 
 	let done = false;
+	let jobError = null;
 	while (!done) {
 		const statusRes = await fetch(`${serverAddress}/status?id=${job_id}`);
+		if (!statusRes.ok) {
+			jobError = `Status check failed with status ${statusRes.status}.`;
+			done = true;
+			break;
+		}
+
 		const status = await statusRes.json();
 		if (status.status === "done") {
 			highlightText(status.result, resolvedContext);
 			console.log("Wynik:", status.result);
 			chrome.runtime.sendMessage({ type: "jobCompleted" });
 			done = true;
+		} else if (status.status === "failed" || status.status === "error") {
+			jobError = status.message || "Job failed on the server.";
+			done = true;
 		} else {
 			console.log("Czekam...");
-			await sleep(2000);
+			await sleep(1000);
 		}
+	}
+
+	if (jobError) {
+		// Jeśli wystąpił błąd w pętli, powiadom background.js
+		chrome.runtime.sendMessage({ type: "jobFailed", error: jobError });
 	}
 }
 
