@@ -5,150 +5,121 @@
  * 2: completed
  * -1: error
  */
-// Zmieniamy jobState na obiekt (mapę), aby przechowywać stan dla każdej zakładki.
-let tabJobStates = {}; // Klucz: tabId (liczba), Wartość: stan (liczba)
 
-// Przechowujemy ID ostatnio aktywnej zakładki
-let activeTabId = null; 
+let tabJobStates = {};   // przechowuje stan joba dla każdej zakładki
+let activeTabId = null;  // śledzenie aktywnej karty
 
-// Funkcja pomocnicza do pobierania stanu dla aktywnej zakładki
-function getCurrentJobState() {
-    return activeTabId ? (tabJobStates[activeTabId] || 0) : 0;
-}
-
-// Funkcja pomocnicza do ustawiania stanu dla zakładki
+/* -------------------------------------------------
+   FUNKCJE POMOCNICZE
+------------------------------------------------- */
 function setJobState(tabId, state) {
     tabJobStates[tabId] = state;
-    // Opcjonalnie: usuń stany dla nieistniejących zakładek, jeśli to konieczne (np. onRemoved)
 }
 
-// Funkcja pomocnicza do resetowania stanu i powiadamiania
-function resetAndNotify(tabId) {
-    setJobState(tabId, 0); // Ustaw stan na 'idle' (0)
-    chrome.runtime.sendMessage({ type: "stateUpdated", jobState: 0 }); 
-    console.log(`Reset jobState for Tab ${tabId} to 0 (idle).`);
+function resetJobState(tabId) {
+    tabJobStates[tabId] = 0;
 }
 
-// --- 1. RESET JOB STATE ON TAB URL CHANGE (NEW CARD/NAVIGATION) ---
+// wysyła update do wszystkich popupów (broadcast)
+function broadcastState(tabId, jobState, error = null) {
+    chrome.runtime.sendMessage({
+        type: "stateUpdated",
+        tabId,
+        jobState,
+        error
+    });
+}
+
+/* -------------------------------------------------
+   1. RESET STANU PRZY ZMIANIE URL AKTYWNEJ KARTY
+------------------------------------------------- */
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-    // ⚠️ WAŻNE: Resetujemy tylko, jeśli URL się zmienił i zakładka jest AKTYWNA.
-    // Chcemy, aby nawigacja w aktywnej zakładce resetowała stan, ale nie chcemy resetować 
-    // stanu w nieaktywnych zakładkach, gdy są ładowane w tle.
     if (changeInfo.url && tabId === activeTabId) {
-        console.log(`Tab ${tabId} navigated to new URL: ${changeInfo.url}. Checking for existing state...`);
-        
-        // Sprawdzamy, czy zakładka ma już stan (np. jeśli powrócono do strony z ukończonym zadaniem)
-        // Jeśli nie, resetujemy. W przypadku zmiany URL na tej samej aktywnej zakładce, 
-        // to faktycznie chcemy zresetować. W przeciwnym razie trudno byłoby 
-        // automatycznie określić "czy powrócono do tej samej strony".
-
-        // Najbezpieczniejszą i najprostszą implementacją jest:
-        // Przy zmianie URL aktywnej zakładki, resetujemy do 0.
-        resetAndNotify(tabId);
+        console.log(`Active tab ${tabId} navigated -> resetting job state`);
+        resetJobState(tabId);
+        broadcastState(tabId, 0);
     }
 });
 
-// --- 2. ZAPISZ STAN ZAKŁADKI I POBIERZ/ZRESETUJ DLA NOWEJ ZAKŁADKI PRZY PRZEŁĄCZANIU ---
-chrome.tabs.onActivated.addListener((activeInfo) => {
-    const newTabId = activeInfo.tabId;
-    
-    // Tylko kontynuuj, jeśli aktywna zakładka faktycznie się zmienia
-    if (newTabId !== activeTabId) {
-        
-        // Krok 1: Zapisz stan dla starej aktywnej zakładki (jeśli istniała)
-        // Stan już jest zapisany w 'tabJobStates' przez odbiorniki wiadomości (sekcje 5, 6), 
-        // więc nie musimy nic robić OPRÓCZ zachowania ID.
+/* -------------------------------------------------
+   2. AKTYWOWANIE NOWEJ KARTY
+------------------------------------------------- */
+chrome.tabs.onActivated.addListener(activeInfo => {
+    activeTabId = activeInfo.tabId;
 
-        console.log(`Switched from Tab ${activeTabId} to Tab ${newTabId}.`);
-        
-        // Krok 2: Ustaw nową aktywną zakładkę
-        activeTabId = newTabId;
-        
-        // Krok 3: Pobierz stan dla nowo aktywowanej zakładki.
-        const stateForNewTab = getCurrentJobState();
-        
-        // Krok 4: Powiadom popup/inne części o stanie nowej aktywnej zakładki.
-        chrome.runtime.sendMessage({ 
-            type: "stateUpdated", 
-            jobState: stateForNewTab 
-        }); 
-        
-        console.log(`Loaded jobState for new Tab ${newTabId}: ${stateForNewTab}.`);
-        
-        // Opcjonalnie: Jeśli zdecydujesz, że przełączenie zawsze resetuje stan, 
-        // zastąp Kroki 3 i 4 wywołaniem resetAndNotify(newTabId); 
-        // Ale zgodnie z Twoją prośbą, powinniśmy go załadować.
+    if (tabJobStates[activeTabId] === undefined) {
+        tabJobStates[activeTabId] = 0;
     }
+
+    console.log(`Switched to tab ${activeTabId}, state: ${tabJobStates[activeTabId]}`);
+    broadcastState(activeTabId, tabJobStates[activeTabId]);
 });
 
-// --- 3. INITIAL ACTIVE TAB SETUP ---
-// Znajdź aktualnie aktywną zakładkę, gdy rozszerzenie się ładuje/przeładowuje
+/* -------------------------------------------------
+   3. INICJALIZACJA AKTYWNEJ KARTY
+------------------------------------------------- */
 chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
     if (tabs.length > 0) {
-        const initialTabId = tabs[0].id;
-        activeTabId = initialTabId;
-        // Upewnij się, że ma początkowy stan 'idle', jeśli go nie ma
-        if (tabJobStates[initialTabId] === undefined) {
-             setJobState(initialTabId, 0);
+        activeTabId = tabs[0].id;
+        if (tabJobStates[activeTabId] === undefined) {
+            tabJobStates[activeTabId] = 0;
         }
     }
 });
 
-// --- Opcjonalnie: Czyszczenie stanu po zamknięciu zakładki ---
-chrome.tabs.onRemoved.addListener((tabId, removeInfo) => {
+/* -------------------------------------------------
+   4. USUWANIE STANU PRZY ZAMKNIĘCIU KARTY
+------------------------------------------------- */
+chrome.tabs.onRemoved.addListener((tabId) => {
     if (tabJobStates[tabId] !== undefined) {
         delete tabJobStates[tabId];
-        console.log(`Tab ${tabId} closed. Job state removed.`);
+        console.log(`Tab ${tabId} closed — state removed`);
     }
+
     if (tabId === activeTabId) {
-        activeTabId = null; // Reset aktywnej zakładki, jeśli została zamknięta
+        activeTabId = null;
     }
 });
-// -----------------------------------------------------
 
+/* -------------------------------------------------
+   5. ODBIÓR WIADOMOŚCI Z POPUP / CONTENT SCRIPT
+------------------------------------------------- */
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    const senderTabId = sender.tab ? sender.tab.id : null;
-    
-    // --- 4. POPUP REQUESTS STATE ---
+    const senderTabId = sender.tab?.id;
+
+    // POPUP: pyta o stan zakładki
     if (message.type === "getJobState") {
-        // Zawsze odpowiadaj bieżącym stanem aktywnej zakładki
-        sendResponse({
-            jobState: getCurrentJobState()
-        });
-        return true; 
+        const tabId = message.tabId ?? senderTabId ?? activeTabId;
+        const state = tabJobStates[tabId] ?? 0;
+        sendResponse({ jobState: state });
+        return true;
     }
 
-    // --- 5. POPUP/JOB UPDATES STATE (i.e. 'progress') ---
+    // POPUP: ustawia stan joba
     if (message.type === "setJobState") {
-        if (senderTabId) {
-            setJobState(senderTabId, message.jobState);
-        } else {
-            // Jeśli wiadomość pochodzi z popupu (i nie ma sender.tab), 
-            // zakładamy, że dotyczy aktywnej zakładki
-            setJobState(activeTabId, message.jobState);
-        }
-        // Upewnij się, że powiadamiasz inne komponenty
-        chrome.runtime.sendMessage({ type: "stateUpdated", jobState: message.jobState });
+        const tabId = senderTabId ?? activeTabId;
+        setJobState(tabId, message.jobState);
+        broadcastState(tabId, message.jobState);
+        return;
     }
 
-    // --- 6. JOB COMPLETION (from Content Script) ---
+    // CONTENT SCRIPT: job zakończony
     if (message.type === "jobCompleted") {
         if (senderTabId) {
-            setJobState(senderTabId, 2); // Ustaw na Completed
-            chrome.runtime.sendMessage({ type: "stateUpdated", jobState: 2 }); 
+            setJobState(senderTabId, 2);
+            broadcastState(senderTabId, 2);
+            console.log(`Job completed in tab ${senderTabId}`);
         }
+        return;
     }
-    
+
+    // CONTENT SCRIPT: job failed
     if (message.type === "jobFailed") {
         if (senderTabId) {
-            setJobState(senderTabId, -1); // Ustaw na Error
-            chrome.runtime.sendMessage({ 
-                type: "stateUpdated", 
-                jobState: -1, 
-                error: message.error 
-            });
+            setJobState(senderTabId, -1);
+            broadcastState(senderTabId, -1, message.error);
+            console.log(`Job failed in tab ${senderTabId}: ${message.error}`);
         }
+        return;
     }
 });
-
-// ... (chrome.action.onClicked listener powinien również działać na activeTabId)
