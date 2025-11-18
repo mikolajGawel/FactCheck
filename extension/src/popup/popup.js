@@ -125,7 +125,7 @@ function renderInProgress() {
     statusEl.textContent = "Job running...";
 }
 function renderCompleted() {
-    articlesContainer.innerHTML = '<div class="state"><img src="logo_highres.png"></div>';
+    articlesContainer.innerHTML = '<div class="state"><img src="completed.png"></div>';
     startBtn.disabled = true;
     statusEl.textContent = "Completed...";
 }
