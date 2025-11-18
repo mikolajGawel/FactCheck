@@ -4,7 +4,7 @@ import * as path from "path";
 
 const port = Number(process.env.PORT ?? 3000);
 const repoRoot = process.cwd();
-const distServerEntry = path.resolve(repoRoot, "dist", "src", "server.js");
+const distServerEntry = path.resolve(repoRoot, "dist", "server.js");
 const restartDebounceMs = 200;
 let restartTimer: NodeJS.Timeout | null = null;
 const npmNodeExec = process.env.npm_node_execpath ?? process.execPath;

@@ -1,14 +1,14 @@
 {
     "name": "server",
     "version": "1.0.0",
-    "main": "dist/src/server.js",
+    "main": "dist/server.js",
     "type": "module",
     "scripts": {
         "build:shared": "tsc -p ../shared/tsconfig.json",
         "build": "npm run build:shared && tsc",
         "dev": "npm run build:shared && node dev/dev-watcher.ts",
         "clean": "node -e \"require('fs').rmSync('dist', { recursive: true, force: true })\"",
-        "start": "node dist/src/server.js",
+        "start": "node dist/server.js",
         "test": "npm run build:shared && node --loader ts-node/esm --test"
     },
     "author": "",

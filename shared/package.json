@@ -1,0 +1,7 @@
+{
+  "name": "shared",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "dist/textProcessing.js",
+  "types": "dist/textProcessing.d.ts"
+}

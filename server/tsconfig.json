@@ -8,7 +8,7 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "outDir": "dist",
-    "rootDir": ".",
+    "rootDir": "src",
     "resolveJsonModule": true,
     "noImplicitAny": false,
     "allowJs": false,
@@ -18,7 +18,7 @@
     "composite": true,
     "baseUrl": "."
   },
-  "include": ["src/**/*", "test/**/*", "dev/**/*"],
+  "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"],
   "references": [
     {
