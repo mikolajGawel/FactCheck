@@ -94,7 +94,7 @@ function wrapRange(range: Range, span: HighlightSpan): HTMLElement {
 	// Preserve layout by ensuring inline display and proper text flow
 	wrapper.style.display = "inline";
 	wrapper.style.whiteSpace = "inherit";
-	wrapper.style.wordWrap = "inherit";
+	wrapper.style.overflowWrap = "inherit";
 	wrapper.style.wordBreak = "inherit";
 	wrapper.style.lineHeight = "inherit";
 	wrapper.style.fontSize = "inherit";
