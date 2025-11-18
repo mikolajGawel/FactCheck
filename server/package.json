@@ -4,11 +4,12 @@
     "main": "dist/src/server.js",
     "type": "module",
     "scripts": {
-        "build": "tsc",
-        "dev": "node dev/dev-watcher.ts",
+        "build:shared": "tsc -p ../shared/tsconfig.json",
+        "build": "npm run build:shared && tsc",
+        "dev": "npm run build:shared && node dev/dev-watcher.ts",
         "clean": "node -e \"require('fs').rmSync('dist', { recursive: true, force: true })\"",
         "start": "node dist/src/server.js",
-        "test": "node --loader ts-node/esm --test"
+        "test": "npm run build:shared && node --loader ts-node/esm --test"
     },
     "author": "",
     "license": "ISC",

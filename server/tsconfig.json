@@ -12,10 +12,17 @@
     "resolveJsonModule": true,
     "noImplicitAny": false,
     "allowJs": false,
-    "declaration": false,
+    "declaration": true,
     "sourceMap": true,
-    "lib": ["es2020", "dom"]
+    "lib": ["es2020", "dom"],
+    "composite": true,
+    "baseUrl": "."
   },
   "include": ["src/**/*", "test/**/*", "dev/**/*"],
   "exclude": ["node_modules", "dist"],
+  "references": [
+    {
+      "path": "../shared"
+    }
+  ]
 }
