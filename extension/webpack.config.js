@@ -13,7 +13,7 @@ export default (env, argv) => {
 	return {
 		mode: isDev ? "development" : "production",
 		entry: {
-			content: "./src/content/content.js",
+			content: "./src/content/content.ts",
 			background: "./src/background/background.js",
 			popup: "./src/popup/popup.js"
 		},
@@ -21,6 +21,27 @@ export default (env, argv) => {
 			filename: "[name].js",
 			path: outputPath,
 			clean: true
+		},
+		resolve: {
+			extensions: [".ts", ".js"],
+			alias: {
+				"#shared": path.resolve(__dirname, "../shared/src")
+			}
+		},
+		module: {
+			rules: [
+				{
+					test: /\.ts$/,
+					exclude: /node_modules/,
+					use: {
+						loader: "ts-loader",
+						options: {
+							configFile: path.resolve(__dirname, "tsconfig.json"),
+							transpileOnly: true
+						}
+					}
+				}
+			]
 		},
 		devtool: isDev ? "cheap-module-source-map" : false,
 		plugins: [

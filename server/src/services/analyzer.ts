@@ -2,6 +2,7 @@ import OpenAI from "openai";
 import { AnalyzerResultSchema, SentenceLLMResponseSchema } from "../schemas/jobSchemas.js";
 import { logAICall } from "./logger.js";
 import { limitSentences, normalizeArticleText, segmentSentences } from "../utils/textUtils.js";
+import { escapeDangerousContent } from "../utils/sanitize.js";
 import { extractJsonObject, stringifyForPrompt } from "../utils/jsonUtils.js";
 import utils from "util";
 
@@ -64,7 +65,7 @@ export async function analyzeArticleSentences(payload, _context?) {
 			contentLength: normalizedText.length,
 			sentenceCount: allSentences.length
 		},
-		summary: llmResponse.summary ?? null,
+		summary: escapeDangerousContent(llmResponse.summary ?? null),
 		spans,
 		metadata: {
 			truncated: allSentences.length > limitedSentences.length
@@ -148,7 +149,7 @@ function buildSpansFromClassification(sentences: any[], classifications: any[]) 
 			end: sentence.end,
 			text: sentence.text,
 			confidence: classification.confidence,
-			rationale: classification.rationale
+			rationale: escapeDangerousContent(classification.rationale)
 		});
 	}
 

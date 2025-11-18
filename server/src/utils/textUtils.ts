@@ -1,16 +1,7 @@
-const NBSP_REGEX = /\u00a0/g;
-const MULTISPACE_REGEX = /[ \t\f\v]+/g;
-const MULTILINE_REGEX = /\s*\n+\s*/g;
+import { normalizeText } from "../../../shared/dist/textProcessing.js";
 
 export function normalizeArticleText(raw) {
-	if (!raw) return "";
-	return String(raw)
-		.replace(/\r\n?/g, "\n")
-		.replace(NBSP_REGEX, " ")
-		.replace(MULTILINE_REGEX, " ")
-		.replace(MULTISPACE_REGEX, " ")
-		.replace(/ {2,}/g, " ")
-		.trim();
+	return normalizeText(raw);
 }
 
 export function segmentSentences(text: string, language = "en") {

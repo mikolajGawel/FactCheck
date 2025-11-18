@@ -1,5 +1,6 @@
 node_modules
 extension/dist
 server/dist
+shared/dist
 server/logs
 .env
