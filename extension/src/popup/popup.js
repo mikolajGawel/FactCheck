@@ -67,6 +67,7 @@ function renderArticles(list) {
 
     // reset selection
     selectedId = null;
+    startBtn.style.display = "flex";
     startBtn.disabled = true;
 }
 
@@ -76,6 +77,8 @@ function selectArticle(id, node) {
     selectedId = id;
     Array.from(articlesContainer.querySelectorAll(".article-item")).forEach(el => el.classList.remove("selected"));
     node.classList.add("selected");
+    startBtn.style.display = "flex";
+
     startBtn.disabled = false;
     statusEl.textContent = "";
 }
@@ -122,12 +125,17 @@ function renderInProgress() {
     
     articlesContainer.innerHTML = '<div class="state"><img src="inprogress.gif"></div>';
     startBtn.disabled = true;
-    statusEl.textContent = "Job running...";
+    statusEl.innerHTML = "<h3>W trakcie analizy</h3>";
+    startBtn.style.display = "none";
+
 }
 function renderCompleted() {
     articlesContainer.innerHTML = '<div class="state"><img src="completed.png"></div>';
     startBtn.disabled = true;
-    statusEl.textContent = "Completed...";
+    statusEl.innerHTML = "<h3>Ukończono analizowanie artykułu</h3>";
+
+    startBtn.style.display = "none";
+
 }
 
 
@@ -164,6 +172,8 @@ async function loadArticles() {
     chrome.tabs.sendMessage(tab.id, { type: "getArticles" }, response => {
         if (chrome.runtime.lastError || !response) {
             articlesContainer.innerHTML = '<div class="loading">Failed to collect articles from page.</div>';
+            startBtn.style.display = "flex";
+
             startBtn.disabled = true;
             return;
         }
@@ -197,7 +207,6 @@ startBtn.addEventListener("click", async () => {
     );
 });
 
-// Listener for messages from the background script (where job state changes are broadcast)
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     // We listen for 'stateUpdated' from the background, which is broadcast when job is completed/failed
     if (message.type === "stateUpdated") {
@@ -209,8 +218,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         } else if (jobState === -1) {
             // Error message is included in the broadcast only
             statusEl.textContent = `Job failed: ${message.error || 'An unknown error occurred.'}`;
-            // Important: We reset the persistent state to Idle (0) after displaying the error,
-            // so the next time the popup opens, it doesn't try to reuse the error message.
             setJobState(0);
             loadArticles(); 
         }
