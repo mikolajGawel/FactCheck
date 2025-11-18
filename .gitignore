@@ -4,3 +4,4 @@ server/dist
 shared/dist
 server/logs
 .env
+tsconfig.tsbuildinfo
