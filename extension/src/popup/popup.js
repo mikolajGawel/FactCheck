@@ -27,7 +27,7 @@ async function queryActiveTab() {
 async function setJobState(newState) {
 	jobState = newState;
 	const tab = await queryActiveTab();
-	chrome.runtime.sendMessage(chrome.runtime.id, {
+	chrome.runtime.sendMessage({
 		type: "setJobState",
 		jobState: newState,
 		tabId: tab.id
@@ -37,7 +37,7 @@ async function setJobState(newState) {
 async function getJobState() {
 	const tab = await queryActiveTab();
 	return new Promise(resolve => {
-		chrome.runtime.sendMessage(chrome.runtime.id, { type: "getJobState", tabId: tab.id }, response => {
+		chrome.runtime.sendMessage({ type: "getJobState", tabId: tab.id }, response => {
 			resolve(response?.jobState ?? 0);
 		});
 	});
@@ -182,8 +182,9 @@ startBtn.addEventListener("click", async () => {
 			url: tab.url
 		},
 		resp => {
+			// If the content script didn't respond, mark job as failed in background
 			if (chrome.runtime.lastError) {
-				chrome.runtime.sendMessage(chrome.runtime.id, {
+				chrome.runtime.sendMessage({
 					type: "jobFailed",
 					error: chrome.runtime.lastError.message
 				});
@@ -222,4 +223,33 @@ chrome.runtime.onMessage.addListener(async message => {
 /* -----------------------------
    INITIAL LOAD
 ----------------------------- */
-loadArticles();
+
+async function fetchAndApplyState() {
+	const state = await getJobState();
+	jobState = state;
+
+	switch (jobState) {
+		case 1:
+			renderInProgress();
+			break;
+		case 2:
+			renderCompleted();
+			break;
+		case -1:
+			renderError("Ostatnie zadanie nie powiodło się.");
+			break;
+		default:
+			loadArticles();
+			break;
+	}
+}
+
+// Run when popup is opened or gains focus
+document.addEventListener("DOMContentLoaded", fetchAndApplyState);
+window.addEventListener("focus", fetchAndApplyState);
+document.addEventListener("visibilitychange", () => {
+	if (!document.hidden) fetchAndApplyState();
+});
+
+// // Fallback immediate invocation (safe if script loaded after DOM)
+// fetchAndApplyState();

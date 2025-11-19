@@ -22,22 +22,39 @@ function resetJobState(tabId) {
 
 // wysyła update do wszystkich popupów (broadcast)
 function broadcastState(tabId, jobState, error = null) {
-	chrome.runtime.sendMessage({
-		type: "stateUpdated",
-		tabId,
-		jobState,
-		error
-	});
+	chrome.runtime.sendMessage(
+		{
+			type: "stateUpdated",
+			tabId,
+			jobState,
+			error
+		},
+		() => {
+			if (chrome.runtime.lastError) {
+			}
+		}
+	);
 }
 
 /* -------------------------------------------------
-   1. RESET STANU PRZY ZMIANIE URL AKTYWNEJ KARTY
+   1. RESET STANU PRZY ZMIANIE URL AKTYWNEJ KARTY OR REFRESH
 ------------------------------------------------- */
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+	// when active tab navigates to a new URL
 	if (changeInfo.url && tabId === activeTabId) {
 		console.log(`Active tab ${tabId} navigated -> resetting job state`);
 		resetJobState(tabId);
 		broadcastState(tabId, 0);
+		return;
+	}
+
+	// when a page starts loading (refresh or navigation that doesn't change URL), reset completed->idle
+	if (changeInfo.status === "loading") {
+		if (tabJobStates[tabId] === 2) {
+			console.log(`Tab ${tabId} started loading -> resetting completed state to idle`);
+			resetJobState(tabId);
+			broadcastState(tabId, 0);
+		}
 	}
 });
 
@@ -84,7 +101,8 @@ chrome.tabs.onRemoved.addListener(tabId => {
 /* -------------------------------------------------
    5. ODBIÓR WIADOMOŚCI Z POPUP / CONTENT SCRIPT
 ------------------------------------------------- */
-chrome.runtime.onMessageExternal.addListener((message, sender, sendResponse) => {
+// switched to internal onMessage listener (was onMessageExternal)
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 	const senderTabId = sender.tab?.id;
 
 	// POPUP: pyta o stan zakładki
@@ -92,12 +110,12 @@ chrome.runtime.onMessageExternal.addListener((message, sender, sendResponse) => 
 		const tabId = message.tabId ?? senderTabId ?? activeTabId;
 		const state = tabJobStates[tabId] ?? 0;
 		sendResponse({ jobState: state });
-		return true;
+		return; // synchronous response
 	}
 
 	// POPUP: ustawia stan joba
 	if (message.type === "setJobState") {
-		const tabId = senderTabId ?? activeTabId;
+		const tabId = message.tabId ?? senderTabId ?? activeTabId;
 		setJobState(tabId, message.jobState);
 		broadcastState(tabId, message.jobState);
 		return;
@@ -115,10 +133,11 @@ chrome.runtime.onMessageExternal.addListener((message, sender, sendResponse) => 
 
 	// CONTENT SCRIPT: job failed
 	if (message.type === "jobFailed") {
-		if (senderTabId) {
-			setJobState(senderTabId, -1);
-			broadcastState(senderTabId, -1, message.error);
-			console.log(`Job failed in tab ${senderTabId}: ${message.error}`);
+		const tabId = message.tabId ?? senderTabId;
+		if (tabId) {
+			setJobState(tabId, -1);
+			broadcastState(tabId, -1, message.error);
+			console.log(`Job failed in tab ${tabId}: ${message.error}`);
 		}
 		return;
 	}
