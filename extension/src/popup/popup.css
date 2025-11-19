@@ -1,8 +1,34 @@
+:root {
+	--bg: #f8f8f8;
+	--panel-bg: #ffffff;
+	--border: #dcdcdc;
+	--muted: #666;
+	--text: #111;
+	--primary: #1976d2;
+	--primary-strong: #0f63a8;
+	--highlight: #f0f8ff;
+	--highlight-selected: #dbeeff;
+}
+
+@media (prefers-color-scheme: dark) {
+	:root {
+		--bg: #111216;
+		--panel-bg: #1e2025;
+		--border: #2f3138;
+		--muted: #a5a9b6;
+		--text: #ffffff;
+		--primary: #4d94ff;
+		--primary-strong: #1f6ce6;
+		--highlight: #2a2b33;
+		--highlight-selected: #3a3c46;
+	}
+}
+
 body {
 	min-width: 320px;
 	font-family: Arial, Helvetica, sans-serif;
-	color: #111;
-	background: #f8f8f8;
+	color: var(--text);
+	background: var(--bg);
 	margin: 0;
 }
 
@@ -18,27 +44,30 @@ h1 {
 #articlesContainer {
 	max-height: 340px;
 	overflow-y: auto;
-	
-	padding: 6px;
+
 	margin-bottom: 8px;
+	background: var(--panel-bg);
+	border: 1px solid var(--border);
+	border-radius: 8px;
 }
 
 .article-item {
 	display: flex;
 	gap: 8px;
 	align-items: center;
-	padding: 6px 8px;
+	padding: .75rem;
 	border-radius: 6px;
 	cursor: pointer;
+    transition: background-color 0.2s ease;
 }
 
 .article-item:hover {
-	background: #f0f8ff;
+	background: var(--highlight);
 }
 
 .article-item.selected {
-	background: #dbeeff;
-	outline: 2px solid #77aaff;
+	background: var(--highlight-selected);
+	outline: 2px solid var(--primary);
 }
 
 .article-title {
@@ -48,7 +77,7 @@ h1 {
 
 .article-meta {
 	font-size: 12px;
-	color: #666;
+	color: var(--muted);
 }
 
 .controls {
@@ -58,12 +87,17 @@ h1 {
 }
 
 button {
-	background: #1976d2;
+	background: var(--primary);
 	border: none;
 	color: #fff;
 	padding: 8px 12px;
 	border-radius: 6px;
 	cursor: pointer;
+	transition: background-color 0.2s ease;
+}
+
+button:hover:not([disabled]) {
+	background: var(--primary-strong);
 }
 
 button[disabled] {
@@ -76,11 +110,13 @@ button[disabled] {
 }
 
 .loading {
-	border: 1px solid #dcdcdc;
-	background: #fff;
-	color: #666;
+	border: 1px solid var(--border);
+	background: var(--panel-bg);
+	color: var(--muted);
 }
-.state img{
-	margin-inline: 10%;
+
+.state img {
+    display: block;
+	margin-inline: auto;
 	width: 70%;
 }
