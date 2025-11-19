@@ -101,6 +101,33 @@ function createRangeFromPointers(pointers: TextPointer[], start: number, end: nu
 
 function wrapRange(range: Range, span: HighlightSpan): HTMLElement {
 	const color = TYPE_COLORS[span.type ?? "fact"] ?? "#ddd";
+	
+	// Inline elements that should be kept inside the highlight spans
+	const INLINE_TAGS = new Set(["A", "ABBR", "ACRONYM", "B", "BDO", "BIG", "BR", "CITE", "CODE", "DFN", "EM", "I", "KBD", "LABEL", "Q", "S", "SAMP", "SMALL", "SPAN", "STRONG", "SUB", "SUP", "TIME", "TT", "U", "VAR", "MARK"]);
+	
+	// Collect all text nodes and their offsets within the range
+	const textNodesWithOffsets: Array<{ node: Text; startOffset: number; endOffset: number }> = [];
+	collectTextNodesInRange(range, textNodesWithOffsets);
+	
+	if (textNodesWithOffsets.length === 0) {
+		// No text nodes to wrap, return empty span
+		return createHighlightSpan(color, span);
+	}
+	
+	// Process in reverse order to avoid affecting subsequent node positions
+	let firstWrapper: HTMLElement | null = null;
+	for (let i = textNodesWithOffsets.length - 1; i >= 0; i--) {
+		const { node, startOffset, endOffset } = textNodesWithOffsets[i];
+		const wrapper = wrapTextNodePortion(node, startOffset, endOffset, color, span);
+		if (i === 0) {
+			firstWrapper = wrapper;
+		}
+	}
+	
+	return firstWrapper!;
+}
+
+function createHighlightSpan(color: string, span: HighlightSpan): HTMLElement {
 	const wrapper = document.createElement("span");
 	wrapper.dataset.factcheckHighlight = "true";
 	wrapper.dataset.type = span.type ?? "unknown";
@@ -112,10 +139,96 @@ function wrapRange(range: Range, span: HighlightSpan): HTMLElement {
 	}
 	wrapper.style.backgroundColor = color;
 	wrapper.style.cursor = "pointer";
+	return wrapper;
+}
 
-	const fragment = range.extractContents();
-	wrapper.appendChild(fragment);
-	range.insertNode(wrapper);
+function collectTextNodesInRange(
+	range: Range,
+	result: Array<{ node: Text; startOffset: number; endOffset: number }>
+): void {
+	const walker = document.createTreeWalker(
+		range.commonAncestorContainer,
+		NodeFilter.SHOW_TEXT,
+		{
+			acceptNode: (node) => {
+				return range.intersectsNode(node) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
+			}
+		}
+	);
+	
+	let currentNode = walker.nextNode();
+	while (currentNode) {
+		const textNode = currentNode as Text;
+		const textContent = textNode.textContent ?? "";
+		
+		if (textContent.trim().length > 0) {
+			// Determine the start and end offsets within this text node
+			const isStartNode = textNode === range.startContainer;
+			const isEndNode = textNode === range.endContainer;
+			
+			const startOffset = isStartNode ? range.startOffset : 0;
+			const endOffset = isEndNode ? range.endOffset : textContent.length;
+			
+			if (startOffset < endOffset) {
+				result.push({ node: textNode, startOffset, endOffset });
+			}
+		}
+		
+		currentNode = walker.nextNode();
+	}
+}
+
+function wrapTextNodePortion(
+	textNode: Text,
+	startOffset: number,
+	endOffset: number,
+	color: string,
+	span: HighlightSpan
+): HTMLElement {
+	const textContent = textNode.textContent ?? "";
+	const textLength = textContent.length;
+	
+	// Clamp offsets
+	const safeStart = Math.max(0, Math.min(startOffset, textLength));
+	const safeEnd = Math.max(safeStart, Math.min(endOffset, textLength));
+	
+	const wrapper = createHighlightSpan(color, span);
+	
+	// Split the text node if necessary
+	if (safeStart === 0 && safeEnd === textLength) {
+		// Wrap the entire text node
+		const parent = textNode.parentNode;
+		if (parent) {
+			parent.insertBefore(wrapper, textNode);
+			wrapper.appendChild(textNode);
+		}
+	} else if (safeStart === 0) {
+		// Wrap from start to middle
+		const beforeText = textNode.splitText(safeEnd);
+		const parent = textNode.parentNode;
+		if (parent) {
+			parent.insertBefore(wrapper, beforeText);
+			wrapper.appendChild(textNode);
+		}
+	} else if (safeEnd === textLength) {
+		// Wrap from middle to end
+		const wrappedText = textNode.splitText(safeStart);
+		const parent = wrappedText.parentNode;
+		if (parent) {
+			parent.insertBefore(wrapper, wrappedText);
+			wrapper.appendChild(wrappedText);
+		}
+	} else {
+		// Wrap middle portion
+		const afterText = textNode.splitText(safeEnd);
+		const wrappedText = textNode.splitText(safeStart);
+		const parent = wrappedText.parentNode;
+		if (parent) {
+			parent.insertBefore(wrapper, afterText);
+			wrapper.appendChild(wrappedText);
+		}
+	}
+	
 	return wrapper;
 }
 
