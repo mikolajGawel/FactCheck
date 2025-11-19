@@ -102,29 +102,170 @@ function createRangeFromPointers(pointers: TextPointer[], start: number, end: nu
 function wrapRange(range: Range, span: HighlightSpan): HTMLElement {
 	const color = TYPE_COLORS[span.type ?? "fact"] ?? "#ddd";
 	
-	// Inline elements that should be kept inside the highlight spans
-	const INLINE_TAGS = new Set(["A", "ABBR", "ACRONYM", "B", "BDO", "BIG", "BR", "CITE", "CODE", "DFN", "EM", "I", "KBD", "LABEL", "Q", "S", "SAMP", "SMALL", "SPAN", "STRONG", "SUB", "SUP", "TIME", "TT", "U", "VAR", "MARK"]);
+	// Block-level elements that should NOT be included inside highlight spans
+	const BLOCK_TAGS = new Set([
+		"ADDRESS", "ARTICLE", "ASIDE", "BLOCKQUOTE", "DETAILS", "DIALOG", "DD", "DIV", 
+		"DL", "DT", "FIELDSET", "FIGCAPTION", "FIGURE", "FOOTER", "FORM", "H1", "H2", 
+		"H3", "H4", "H5", "H6", "HEADER", "HGROUP", "HR", "LI", "MAIN", "NAV", "OL", 
+		"P", "PRE", "SECTION", "TABLE", "UL"
+	]);
 	
-	// Collect all text nodes and their offsets within the range
+	// Check if range spans across block-level elements
+	const blockElements = findBlockElementsInRange(range, BLOCK_TAGS);
+	
+	if (blockElements.length > 0) {
+		// Range spans multiple blocks - need to wrap each block separately
+		return wrapRangeAcrossBlocks(range, span, color, BLOCK_TAGS);
+	}
+	
+	// Range is within a single block - can wrap directly
+	return wrapRangeWithinBlock(range, span, color);
+}
+
+function findBlockElementsInRange(range: Range, blockTags: Set<string>): Element[] {
+	const blocks: Element[] = [];
+	const walker = document.createTreeWalker(
+		range.commonAncestorContainer,
+		NodeFilter.SHOW_ELEMENT,
+		{
+			acceptNode: (node) => {
+				const element = node as Element;
+				if (blockTags.has(element.tagName) && range.intersectsNode(element)) {
+					return NodeFilter.FILTER_ACCEPT;
+				}
+				return NodeFilter.FILTER_SKIP;
+			}
+		}
+	);
+	
+	let node = walker.nextNode();
+	while (node) {
+		blocks.push(node as Element);
+		node = walker.nextNode();
+	}
+	
+	return blocks;
+}
+
+function wrapRangeAcrossBlocks(
+	range: Range,
+	span: HighlightSpan,
+	color: string,
+	blockTags: Set<string>
+): HTMLElement {
+	// Collect all text nodes in the range
 	const textNodesWithOffsets: Array<{ node: Text; startOffset: number; endOffset: number }> = [];
 	collectTextNodesInRange(range, textNodesWithOffsets);
 	
 	if (textNodesWithOffsets.length === 0) {
-		// No text nodes to wrap, return empty span
 		return createHighlightSpan(color, span);
 	}
 	
-	// Process in reverse order to avoid affecting subsequent node positions
+	// Group text nodes by their containing block
+	const groups = groupTextNodesByBlock(textNodesWithOffsets, blockTags);
+	
+	// Wrap each group
 	let firstWrapper: HTMLElement | null = null;
-	for (let i = textNodesWithOffsets.length - 1; i >= 0; i--) {
-		const { node, startOffset, endOffset } = textNodesWithOffsets[i];
-		const wrapper = wrapTextNodePortion(node, startOffset, endOffset, color, span);
+	for (let i = groups.length - 1; i >= 0; i--) {
+		const group = groups[i];
+		const wrapper = wrapTextNodeGroup(group, color, span);
 		if (i === 0) {
 			firstWrapper = wrapper;
 		}
 	}
 	
 	return firstWrapper!;
+}
+
+function wrapRangeWithinBlock(range: Range, span: HighlightSpan, color: string): HTMLElement {
+	const wrapper = createHighlightSpan(color, span);
+	
+	try {
+		// Try to use surroundContents if possible (most efficient)
+		range.surroundContents(wrapper);
+		return wrapper;
+	} catch (e) {
+		// surroundContents failed, fall back to extract and insert
+		try {
+			const fragment = range.extractContents();
+			wrapper.appendChild(fragment);
+			range.insertNode(wrapper);
+			return wrapper;
+		} catch (err) {
+			console.warn("FactCheck: unable to wrap range", err);
+			// Last resort: wrap individual text nodes
+			const textNodesWithOffsets: Array<{ node: Text; startOffset: number; endOffset: number }> = [];
+			collectTextNodesInRange(range, textNodesWithOffsets);
+			
+			if (textNodesWithOffsets.length === 0) {
+				return wrapper;
+			}
+			
+			for (let i = textNodesWithOffsets.length - 1; i >= 0; i--) {
+				const { node, startOffset, endOffset } = textNodesWithOffsets[i];
+				wrapTextNodePortion(node, startOffset, endOffset, color, span);
+			}
+			
+			return wrapper;
+		}
+	}
+}
+
+function groupTextNodesByBlock(
+	textNodes: Array<{ node: Text; startOffset: number; endOffset: number }>,
+	blockTags: Set<string>
+): Array<Array<{ node: Text; startOffset: number; endOffset: number }>> {
+	const groups: Array<Array<{ node: Text; startOffset: number; endOffset: number }>> = [];
+	let currentGroup: Array<{ node: Text; startOffset: number; endOffset: number }> = [];
+	let currentBlock: Element | null = null;
+	
+	for (const item of textNodes) {
+		// Find the containing block element
+		let block: Element | null = null;
+		let parent = item.node.parentElement;
+		while (parent) {
+			if (blockTags.has(parent.tagName)) {
+				block = parent;
+				break;
+			}
+			parent = parent.parentElement;
+		}
+		
+		if (block !== currentBlock) {
+			if (currentGroup.length > 0) {
+				groups.push(currentGroup);
+			}
+			currentGroup = [item];
+			currentBlock = block;
+		} else {
+			currentGroup.push(item);
+		}
+	}
+	
+	if (currentGroup.length > 0) {
+		groups.push(currentGroup);
+	}
+	
+	return groups;
+}
+
+function wrapTextNodeGroup(
+	textNodes: Array<{ node: Text; startOffset: number; endOffset: number }>,
+	color: string,
+	span: HighlightSpan
+): HTMLElement {
+	if (textNodes.length === 0) {
+		return createHighlightSpan(color, span);
+	}
+	
+	// Create a range spanning all text nodes in the group
+	const groupRange = document.createRange();
+	groupRange.setStart(textNodes[0].node, textNodes[0].startOffset);
+	const lastNode = textNodes[textNodes.length - 1];
+	groupRange.setEnd(lastNode.node, lastNode.endOffset);
+	
+	// Try to wrap the range
+	return wrapRangeWithinBlock(groupRange, span, color);
 }
 
 function createHighlightSpan(color: string, span: HighlightSpan): HTMLElement {
