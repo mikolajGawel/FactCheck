@@ -17,26 +17,29 @@ export function ensureTooltip(): void {
 	document.body.appendChild(tooltip);
 }
 
-function showTooltip(event: MouseEvent, html: string): void {
+function showTooltipForNode(node: HTMLElement, html: string): void {
 	ensureTooltip();
 	if (!tooltip) return;
 
 	tooltip.innerHTML = html;
+	tooltip.style.display = "block";
 
-	let x = event.pageX + 10;
-	let y = event.pageY + 10;
+	// compute after display so offsetWidth/offsetHeight are valid
+	const rect = node.getBoundingClientRect();
 
+	let x = rect.left;
+	let y = rect.bottom + 6; // sits *under* the text
+
+	// Prevent off-screen overflow
 	if (x + tooltip.offsetWidth > window.innerWidth) {
-		x = event.pageX - tooltip.offsetWidth - 10;
+		x = window.innerWidth - tooltip.offsetWidth - 10;
 	}
 	if (y + tooltip.offsetHeight > window.innerHeight) {
-		y = window.innerHeight - tooltip.offsetHeight - 10;
+		y = rect.top - tooltip.offsetHeight - 6; // show above if not enough space below
 	}
 
-	// Keep original behavior; position update can be changed in a separate PR if necessary
-	tooltip.style.left = `${0}px`;
-	tooltip.style.top = `${0}px`;
-	tooltip.style.display = "block";
+	tooltip.style.left = `${x}px`;
+	tooltip.style.top = `${y}px`;
 }
 
 export function hideTooltip(): void {
@@ -47,9 +50,16 @@ export function hideTooltip(): void {
 
 function buildTooltipHtml(span: HighlightSpan): string {
 	const type = escapeHtml(span.type ?? "unknown");
-	const confidence = typeof span.confidence === "number" ? `${Math.round(span.confidence * 100)}%` : "n/a";
+	const confidence =
+		typeof span.confidence === "number"
+			? `${Math.round(span.confidence * 100)}%`
+			: "n/a";
 	const rationale = escapeHtml(span.rationale ?? "No rationale provided.");
-	return `<div><strong>Type:</strong> ${type}</div><div><strong>Confidence:</strong> ${confidence}</div><div><strong>Rationale:</strong> ${rationale}</div>`;
+	return `
+		<div><strong>Type:</strong> ${type}</div>
+		<div><strong>Confidence:</strong> ${confidence}</div>
+		<div><strong>Rationale:</strong> ${rationale}</div>
+	`;
 }
 
 function escapeHtml(value: string): string {
@@ -64,9 +74,9 @@ function escapeHtml(value: string): string {
 }
 
 export function attachTooltip(node: HTMLElement, span: HighlightSpan): void {
-	node.addEventListener("mouseenter", event => {
+	node.addEventListener("mouseenter", () => {
 		const html = buildTooltipHtml(span);
-		showTooltip(event as MouseEvent, html);
+		showTooltipForNode(node, html);
 	});
 
 	node.addEventListener("mouseleave", hideTooltip);
