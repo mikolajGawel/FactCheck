@@ -10,191 +10,213 @@ let jobState = 0; // 0: idle, 1: progress, 2: completed, -1: error
    HELPERS
 ----------------------------- */
 function escapeHtml(s) {
-    return (s || "").replace(/[&<>"']/g, c =>
-        ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])
-    );
+	return (s || "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
 
 async function queryActiveTab() {
-    return new Promise(resolve => {
-        chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
-            resolve(tabs[0]);
-        });
-    });
+	return new Promise(resolve => {
+		chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
+			resolve(tabs[0]);
+		});
+	});
 }
 
 /* -----------------------------
    STATE MANAGEMENT
 ----------------------------- */
 async function setJobState(newState) {
-    jobState = newState;
-    const tab = await queryActiveTab();
-    chrome.runtime.sendMessage({
-        type: "setJobState",
-        jobState: newState,
-        tabId: tab.id
-    });
+	jobState = newState;
+	const tab = await queryActiveTab();
+	chrome.runtime.sendMessage(chrome.runtime.id, {
+		type: "setJobState",
+		jobState: newState,
+		tabId: tab.id
+	});
 }
 
 async function getJobState() {
-    const tab = await queryActiveTab();
-    return new Promise(resolve => {
-        chrome.runtime.sendMessage({ type: "getJobState", tabId: tab.id }, response => {
-            resolve(response?.jobState ?? 0);
-        });
-    });
+	const tab = await queryActiveTab();
+	return new Promise(resolve => {
+		chrome.runtime.sendMessage(chrome.runtime.id, { type: "getJobState", tabId: tab.id }, response => {
+			resolve(response?.jobState ?? 0);
+		});
+	});
 }
 
 /* -----------------------------
    UI RENDERING
 ----------------------------- */
 function renderArticles(list) {
-    articlesContainer.innerHTML = "";
-    if (!list.length) {
-        articlesContainer.innerHTML = '<div class="loading">No &lt;article&gt; elements found.</div>';
-        startBtn.disabled = true;
-        return;
-    }
+	articlesContainer.innerHTML = "";
+	if (!list.length) {
+		articlesContainer.innerHTML = '<div class="loading">No &lt;article&gt; elements found.</div>';
+		startBtn.disabled = true;
+		return;
+	}
 
-    list.forEach(a => {
-        const node = document.createElement("div");
-        node.className = "article-item";
-        node.tabIndex = 0;
-        node.dataset.id = a.id;
-        node.innerHTML = `
+	list.forEach(a => {
+		const node = document.createElement("div");
+		node.className = "article-item";
+		node.tabIndex = 0;
+		node.dataset.id = a.id;
+		node.innerHTML = `
             <div style="flex:1">
                 <div class="article-title">${escapeHtml(a.title)}</div>
                 <div class="article-meta">${escapeHtml(a.snippet)}</div>
             </div>`;
-        node.addEventListener("click", () => selectArticle(a.id, node));
-        node.addEventListener("keydown", ev => {
-            if (ev.key === "Enter" || ev.key === " ") {
-                ev.preventDefault();
-                selectArticle(a.id, node);
-            }
-        });
-        articlesContainer.appendChild(node);
-    });
+		node.addEventListener("click", () => selectArticle(a.id, node));
+		node.addEventListener("keydown", ev => {
+			if (ev.key === "Enter" || ev.key === " ") {
+				ev.preventDefault();
+				selectArticle(a.id, node);
+			}
+		});
+		articlesContainer.appendChild(node);
+	});
 
-    selectedId = null;
-    startBtn.style.display = "flex";
-    startBtn.disabled = true;
+	selectedId = null;
+	startBtn.style.display = "flex";
+	startBtn.disabled = true;
 }
 
 function selectArticle(id, node) {
-    if (jobState === 1) return; // w trakcie pracy
-    selectedId = id;
-    Array.from(articlesContainer.querySelectorAll(".article-item")).forEach(el => el.classList.remove("selected"));
-    node.classList.add("selected");
-    startBtn.disabled = false;
-    statusEl.textContent = "";
+	if (jobState === 1) return; // w trakcie pracy
+	selectedId = id;
+	Array.from(articlesContainer.querySelectorAll(".article-item")).forEach(el => el.classList.remove("selected"));
+	node.classList.add("selected");
+	startBtn.disabled = false;
+	statusEl.textContent = "";
 }
 
 function renderInProgress() {
-    articlesContainer.innerHTML = '<div class="state"><img src="inprogress.gif"></div>';
-    startBtn.style.display = "none";
-    statusEl.innerHTML = "<h3>W trakcie analizy...</h3>";
+	articlesContainer.innerHTML = '<div class="state"><img src="inprogress.gif"></div>';
+	startBtn.style.display = "none";
+	statusEl.innerHTML = "<h3>W trakcie analizy...</h3>";
 }
 
 function renderCompleted() {
-    articlesContainer.innerHTML = '<div class="state"><img src="completed.png"></div>';
-    startBtn.style.display = "none";
-    statusEl.innerHTML = "<h3>Analiza zakończona</h3>";
+	articlesContainer.innerHTML = '<div class="state"><img src="completed.png"></div>';
+	startBtn.style.display = "none";
+	statusEl.innerHTML = "<h3>Analiza zakończona</h3>";
 }
 
 function renderError(errorMessage) {
-    articlesContainer.innerHTML = '<div class="state"><img src="error.png" style="width:64px"></div>';
-    startBtn.style.display = "none";
-    statusEl.innerHTML = `<h3>Błąd</h3><p>${escapeHtml(errorMessage)}</p>`;
+	articlesContainer.innerHTML = '<div class="state"><img src="error.png" style="width:64px"></div>';
+	startBtn.style.display = "none";
+	statusEl.innerHTML = `<h3>Błąd</h3><p>${escapeHtml(errorMessage)}</p>`;
 }
 
 /* -----------------------------
    LOAD ARTICLES
 ----------------------------- */
 async function ensureContentScript(tabId) {
-    return new Promise(resolve => {
-        chrome.tabs.sendMessage(tabId, { type: "ping" }, res => {
-            if (!chrome.runtime.lastError && res?.status === "pong") {
-                resolve(true);
-                return;
-            }
-            chrome.scripting.executeScript({ target: { tabId }, files: ["content.js"] }, () => {
-                resolve(!chrome.runtime.lastError);
-            });
-        });
-    });
+	return new Promise(resolve => {
+		chrome.tabs.sendMessage(tabId, { type: "ping" }, res => {
+			if (!chrome.runtime.lastError && res?.status === "pong") {
+				resolve(true);
+				return;
+			}
+			chrome.scripting.executeScript({ target: { tabId }, files: ["content.js"] }, () => {
+				resolve(!chrome.runtime.lastError);
+			});
+		});
+	});
 }
 
 async function loadArticles() {
-    const tab = await queryActiveTab();
-    if (!tab || !tab.id) return;
+	const tab = await queryActiveTab();
+	if (!tab || !tab.id) return;
 
-    jobState = await getJobState();
+	jobState = await getJobState();
 
-    // render based on jobState
-    if (jobState === 1) { renderInProgress(); return; }
-    if (jobState === 2) { renderCompleted(); return; }
-    if (jobState === -1) { renderError("Ostatnie zadanie nie powiodło się."); return; }
+	// render based on jobState
+	if (jobState === 1) {
+		renderInProgress();
+		return;
+	}
+	if (jobState === 2) {
+		renderCompleted();
+		return;
+	}
+	if (jobState === -1) {
+		renderError("Ostatnie zadanie nie powiodło się.");
+		return;
+	}
 
-    const ok = await ensureContentScript(tab.id);
-    if (!ok) {
-        articlesContainer.innerHTML = '<div class="loading">Content script injection failed.</div>';
-        startBtn.disabled = true;
-        return;
-    }
+	const ok = await ensureContentScript(tab.id);
+	if (!ok) {
+		articlesContainer.innerHTML = '<div class="loading">Content script injection failed.</div>';
+		startBtn.disabled = true;
+		return;
+	}
 
-    chrome.tabs.sendMessage(tab.id, { type: "getArticles" }, response => {
-        if (chrome.runtime.lastError || !response) {
-            articlesContainer.innerHTML = '<div class="loading">Failed to get articles.</div>';
-            startBtn.disabled = true;
-            return;
-        }
-        articles = response.articles ?? [];
-        renderArticles(articles);
-    });
+	chrome.tabs.sendMessage(tab.id, { type: "getArticles" }, response => {
+		if (chrome.runtime.lastError || !response) {
+			articlesContainer.innerHTML = '<div class="loading">Failed to get articles.</div>';
+			startBtn.disabled = true;
+			return;
+		}
+		articles = response.articles ?? [];
+		renderArticles(articles);
+	});
 }
 
 /* -----------------------------
    EVENT LISTENERS
 ----------------------------- */
 startBtn.addEventListener("click", async () => {
-    if (selectedId === null) return;
-    const tab = await queryActiveTab();
-    if (!tab || !tab.id) return;
+	if (selectedId === null) return;
+	const tab = await queryActiveTab();
+	if (!tab || !tab.id) return;
 
-    setJobState(1);
-    renderInProgress();
+	setJobState(1);
+	renderInProgress();
 
-    const article = articles.find(a => a.id === selectedId);
-    chrome.tabs.sendMessage(tab.id, {
-        type: "startJob",
-        articleId: selectedId,
-        title: article?.title ?? null,
-        url: tab.url
-    }, resp => {
-        if (chrome.runtime.lastError) {
-            chrome.runtime.sendMessage({ type: "jobFailed", error: chrome.runtime.lastError.message });
-        }
-    });
+	const article = articles.find(a => a.id === selectedId);
+	chrome.tabs.sendMessage(
+		tab.id,
+		{
+			type: "startJob",
+			articleId: selectedId,
+			title: article?.title ?? null,
+			url: tab.url
+		},
+		resp => {
+			if (chrome.runtime.lastError) {
+				chrome.runtime.sendMessage(chrome.runtime.id, {
+					type: "jobFailed",
+					error: chrome.runtime.lastError.message
+				});
+			}
+		}
+	);
 });
 
 /* -----------------------------
    RECEIVE STATE UPDATES
 ----------------------------- */
-chrome.runtime.onMessage.addListener(async (message) => {
-    if (message.type !== "stateUpdated") return;
+chrome.runtime.onMessage.addListener(async message => {
+	if (message.type !== "stateUpdated") return;
 
-    const tab = await queryActiveTab();
-    if (message.tabId !== tab.id) return; // update dotyczy innej karty
+	const tab = await queryActiveTab();
+	if (message.tabId !== tab.id) return; // update dotyczy innej karty
 
-    jobState = message.jobState;
+	jobState = message.jobState;
 
-    switch(jobState) {
-        case 1: renderInProgress(); break;
-        case 2: renderCompleted(); break;
-        case -1: renderError(message.error || "Błąd"); break;
-        default: loadArticles(); break;
-    }
+	switch (jobState) {
+		case 1:
+			renderInProgress();
+			break;
+		case 2:
+			renderCompleted();
+			break;
+		case -1:
+			renderError(message.error || "Błąd");
+			break;
+		default:
+			loadArticles();
+			break;
+	}
 });
 
 /* -----------------------------
