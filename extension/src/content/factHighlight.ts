@@ -69,9 +69,30 @@ function createRangeFromPointers(pointers: TextPointer[], start: number, end: nu
 	if (!startEntry || !endEntry) return null;
 	if (!startEntry.startNode.isConnected || !endEntry.endNode.isConnected) return null;
 
+	const startNodeLength = startEntry.startNode.textContent?.length ?? 0;
+	const endNodeLength = endEntry.endNode.textContent?.length ?? 0;
+	const safeStartOffset = clamp(startEntry.startOffset, 0, startNodeLength);
+	const safeEndOffset = clamp(endEntry.endOffset, 0, endNodeLength);
+
+	if (
+		safeStartOffset >= startNodeLength &&
+		startEntry.startNode === endEntry.endNode &&
+		safeEndOffset <= safeStartOffset
+	) {
+		return null;
+	}
+	if (safeStartOffset === safeEndOffset && startEntry.startNode === endEntry.endNode) {
+		return null;
+	}
+
 	const range = document.createRange();
-	range.setStart(startEntry.startNode, startEntry.startOffset);
-	range.setEnd(endEntry.endNode, endEntry.endOffset);
+	try {
+		range.setStart(startEntry.startNode, safeStartOffset);
+		range.setEnd(endEntry.endNode, safeEndOffset);
+	} catch (err) {
+		console.warn("FactCheck: unable to create highlight range", err);
+		return null;
+	}
 	if (range.collapsed) {
 		return null;
 	}
