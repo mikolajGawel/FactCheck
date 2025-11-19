@@ -46,9 +46,8 @@ export function highlightText(result: HighlightResult | null | undefined, contex
 
 	for (const span of sortedSpans) {
 		const range = createRangeFromPointers(context.pointers, span.start, span.end);
-		if (!range) {
-			continue;
-		}
+		if (!range) continue;
+
 		const highlight = wrapRange(range, span);
 		attachTooltip(highlight, span);
 	}
@@ -101,69 +100,89 @@ function createRangeFromPointers(pointers: TextPointer[], start: number, end: nu
 
 function wrapRange(range: Range, span: HighlightSpan): HTMLElement {
 	const color = TYPE_COLORS[span.type ?? "fact"] ?? "#ddd";
-	
+
 	// Block-level elements that should NOT be included inside highlight spans
 	const BLOCK_TAGS = new Set([
-		"ADDRESS", "ARTICLE", "ASIDE", "BLOCKQUOTE", "DETAILS", "DIALOG", "DD", "DIV", 
-		"DL", "DT", "FIELDSET", "FIGCAPTION", "FIGURE", "FOOTER", "FORM", "H1", "H2", 
-		"H3", "H4", "H5", "H6", "HEADER", "HGROUP", "HR", "LI", "MAIN", "NAV", "OL", 
-		"P", "PRE", "SECTION", "TABLE", "UL"
+		"ADDRESS",
+		"ARTICLE",
+		"ASIDE",
+		"BLOCKQUOTE",
+		"DETAILS",
+		"DIALOG",
+		"DD",
+		"DIV",
+		"DL",
+		"DT",
+		"FIELDSET",
+		"FIGCAPTION",
+		"FIGURE",
+		"FOOTER",
+		"FORM",
+		"H1",
+		"H2",
+		"H3",
+		"H4",
+		"H5",
+		"H6",
+		"HEADER",
+		"HGROUP",
+		"HR",
+		"LI",
+		"MAIN",
+		"NAV",
+		"OL",
+		"P",
+		"PRE",
+		"SECTION",
+		"TABLE",
+		"UL"
 	]);
-	
+
 	// Check if range spans across block-level elements
 	const blockElements = findBlockElementsInRange(range, BLOCK_TAGS);
-	
+
 	if (blockElements.length > 0) {
 		// Range spans multiple blocks - need to wrap each block separately
 		return wrapRangeAcrossBlocks(range, span, color, BLOCK_TAGS);
 	}
-	
+
 	// Range is within a single block - can wrap directly
 	return wrapRangeWithinBlock(range, span, color);
 }
 
 function findBlockElementsInRange(range: Range, blockTags: Set<string>): Element[] {
 	const blocks: Element[] = [];
-	const walker = document.createTreeWalker(
-		range.commonAncestorContainer,
-		NodeFilter.SHOW_ELEMENT,
-		{
-			acceptNode: (node) => {
-				const element = node as Element;
-				if (blockTags.has(element.tagName) && range.intersectsNode(element)) {
-					return NodeFilter.FILTER_ACCEPT;
-				}
-				return NodeFilter.FILTER_SKIP;
+	const walker = document.createTreeWalker(range.commonAncestorContainer, NodeFilter.SHOW_ELEMENT, {
+		acceptNode: node => {
+			const element = node as Element;
+			if (blockTags.has(element.tagName) && range.intersectsNode(element)) {
+				return NodeFilter.FILTER_ACCEPT;
 			}
+			return NodeFilter.FILTER_SKIP;
 		}
-	);
-	
+	});
+
 	let node = walker.nextNode();
 	while (node) {
 		blocks.push(node as Element);
 		node = walker.nextNode();
 	}
-	
+
 	return blocks;
 }
 
-function wrapRangeAcrossBlocks(
-	range: Range,
-	span: HighlightSpan,
-	color: string,
-	blockTags: Set<string>
-): HTMLElement {
+function wrapRangeAcrossBlocks(range: Range, span: HighlightSpan, color: string, blockTags: Set<string>): HTMLElement {
 	// Collect all text nodes in the range
 	const textNodesWithOffsets: Array<{ node: Text; startOffset: number; endOffset: number }> = [];
 	collectTextNodesInRange(range, textNodesWithOffsets);
-	
+
 	if (textNodesWithOffsets.length === 0) {
 		return createHighlightSpan(color, span);
 	}
-	
+
 	// Group text nodes by their containing block
 	const groups = groupTextNodesByBlock(textNodesWithOffsets, blockTags);
-	
+
 	// Wrap each group
 	let firstWrapper: HTMLElement | null = null;
 	for (let i = groups.length - 1; i >= 0; i--) {
@@ -173,13 +192,13 @@ function wrapRangeAcrossBlocks(
 			firstWrapper = wrapper;
 		}
 	}
-	
+
 	return firstWrapper!;
 }
 
 function wrapRangeWithinBlock(range: Range, span: HighlightSpan, color: string): HTMLElement {
 	const wrapper = createHighlightSpan(color, span);
-	
+
 	try {
 		// Try to use surroundContents if possible (most efficient)
 		range.surroundContents(wrapper);
@@ -196,16 +215,16 @@ function wrapRangeWithinBlock(range: Range, span: HighlightSpan, color: string):
 			// Last resort: wrap individual text nodes
 			const textNodesWithOffsets: Array<{ node: Text; startOffset: number; endOffset: number }> = [];
 			collectTextNodesInRange(range, textNodesWithOffsets);
-			
+
 			if (textNodesWithOffsets.length === 0) {
 				return wrapper;
 			}
-			
+
 			for (let i = textNodesWithOffsets.length - 1; i >= 0; i--) {
 				const { node, startOffset, endOffset } = textNodesWithOffsets[i];
 				wrapTextNodePortion(node, startOffset, endOffset, color, span);
 			}
-			
+
 			return wrapper;
 		}
 	}
@@ -218,7 +237,7 @@ function groupTextNodesByBlock(
 	const groups: Array<Array<{ node: Text; startOffset: number; endOffset: number }>> = [];
 	let currentGroup: Array<{ node: Text; startOffset: number; endOffset: number }> = [];
 	let currentBlock: Element | null = null;
-	
+
 	for (const item of textNodes) {
 		// Find the containing block element
 		let block: Element | null = null;
@@ -230,7 +249,7 @@ function groupTextNodesByBlock(
 			}
 			parent = parent.parentElement;
 		}
-		
+
 		if (block !== currentBlock) {
 			if (currentGroup.length > 0) {
 				groups.push(currentGroup);
@@ -241,11 +260,11 @@ function groupTextNodesByBlock(
 			currentGroup.push(item);
 		}
 	}
-	
+
 	if (currentGroup.length > 0) {
 		groups.push(currentGroup);
 	}
-	
+
 	return groups;
 }
 
@@ -257,13 +276,13 @@ function wrapTextNodeGroup(
 	if (textNodes.length === 0) {
 		return createHighlightSpan(color, span);
 	}
-	
+
 	// Create a range spanning all text nodes in the group
 	const groupRange = document.createRange();
 	groupRange.setStart(textNodes[0].node, textNodes[0].startOffset);
 	const lastNode = textNodes[textNodes.length - 1];
 	groupRange.setEnd(lastNode.node, lastNode.endOffset);
-	
+
 	// Try to wrap the range
 	return wrapRangeWithinBlock(groupRange, span, color);
 }
@@ -283,38 +302,31 @@ function createHighlightSpan(color: string, span: HighlightSpan): HTMLElement {
 	return wrapper;
 }
 
-function collectTextNodesInRange(
-	range: Range,
-	result: Array<{ node: Text; startOffset: number; endOffset: number }>
-): void {
-	const walker = document.createTreeWalker(
-		range.commonAncestorContainer,
-		NodeFilter.SHOW_TEXT,
-		{
-			acceptNode: (node) => {
-				return range.intersectsNode(node) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
-			}
+function collectTextNodesInRange(range: Range, result: Array<{ node: Text; startOffset: number; endOffset: number }>): void {
+	const walker = document.createTreeWalker(range.commonAncestorContainer, NodeFilter.SHOW_TEXT, {
+		acceptNode: node => {
+			return range.intersectsNode(node) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
 		}
-	);
-	
+	});
+
 	let currentNode = walker.nextNode();
 	while (currentNode) {
 		const textNode = currentNode as Text;
 		const textContent = textNode.textContent ?? "";
-		
+
 		if (textContent.trim().length > 0) {
 			// Determine the start and end offsets within this text node
 			const isStartNode = textNode === range.startContainer;
 			const isEndNode = textNode === range.endContainer;
-			
+
 			const startOffset = isStartNode ? range.startOffset : 0;
 			const endOffset = isEndNode ? range.endOffset : textContent.length;
-			
+
 			if (startOffset < endOffset) {
 				result.push({ node: textNode, startOffset, endOffset });
 			}
 		}
-		
+
 		currentNode = walker.nextNode();
 	}
 }
@@ -328,13 +340,13 @@ function wrapTextNodePortion(
 ): HTMLElement {
 	const textContent = textNode.textContent ?? "";
 	const textLength = textContent.length;
-	
+
 	// Clamp offsets
 	const safeStart = Math.max(0, Math.min(startOffset, textLength));
 	const safeEnd = Math.max(safeStart, Math.min(endOffset, textLength));
-	
+
 	const wrapper = createHighlightSpan(color, span);
-	
+
 	// Split the text node if necessary
 	if (safeStart === 0 && safeEnd === textLength) {
 		// Wrap the entire text node
@@ -369,22 +381,24 @@ function wrapTextNodePortion(
 			wrapper.appendChild(wrappedText);
 		}
 	}
-	
+
 	return wrapper;
 }
 
 function attachTooltip(node: HTMLElement, span: HighlightSpan): void {
 	node.addEventListener("mouseenter", event => {
+		console.log("Mouse entered highlight:", span);
 		const html = buildTooltipHtml(span);
 		showTooltip(event as MouseEvent, html);
 	});
+
 	node.addEventListener("mouseleave", hideTooltip);
 }
 
 function ensureTooltip(): void {
 	if (tooltip) return;
 	tooltip = document.createElement("div");
-	tooltip.style.position = "absolute";
+	tooltip.style.position = "fixed";
 	tooltip.style.padding = "8px 12px";
 	tooltip.style.background = "rgba(0,0,0,0.85)";
 	tooltip.style.color = "white";
