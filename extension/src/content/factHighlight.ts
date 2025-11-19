@@ -388,7 +388,6 @@ function wrapTextNodePortion(
 
 function attachTooltip(node: HTMLElement, span: HighlightSpan): void {
 	node.addEventListener("mouseenter", event => {
-		console.log("Mouse entered highlight:", span);
 		const html = buildTooltipHtml(span);
 		showTooltip(event as MouseEvent, html);
 	});
@@ -427,8 +426,8 @@ function showTooltip(event: MouseEvent, html: string): void {
 		y = window.innerHeight - tooltip.offsetHeight - 10;
 	}
 
-	tooltip.style.left = `${x}px`;
-	tooltip.style.top = `${y}px`;
+	tooltip.style.left = `${0}px`;
+	tooltip.style.top = `${0}px`;
 	tooltip.style.display = "block";
 }
 
