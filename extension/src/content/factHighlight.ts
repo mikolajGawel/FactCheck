@@ -48,8 +48,11 @@ export function highlightText(result: HighlightResult | null | undefined, contex
 		const range = createRangeFromPointers(context.pointers, span.start, span.end);
 		if (!range) continue;
 
-		const highlight = wrapRange(range, span);
-		attachTooltip(highlight, span);
+		const highlights = wrapRange(range, span);
+		// Attach tooltip to all wrapper elements (a sentence may span multiple blocks)
+		for (const highlight of highlights) {
+			attachTooltip(highlight, span);
+		}
 	}
 }
 
@@ -98,7 +101,7 @@ function createRangeFromPointers(pointers: TextPointer[], start: number, end: nu
 	return range;
 }
 
-function wrapRange(range: Range, span: HighlightSpan): HTMLElement {
+function wrapRange(range: Range, span: HighlightSpan): HTMLElement[] {
 	const color = TYPE_COLORS[span.type ?? "fact"] ?? "#ddd";
 
 	// Block-level elements that should NOT be included inside highlight spans
@@ -147,7 +150,7 @@ function wrapRange(range: Range, span: HighlightSpan): HTMLElement {
 	}
 
 	// Range is within a single block - can wrap directly
-	return wrapRangeWithinBlock(range, span, color);
+	return [wrapRangeWithinBlock(range, span, color)];
 }
 
 function findBlockElementsInRange(range: Range, blockTags: Set<string>): Element[] {
@@ -171,29 +174,27 @@ function findBlockElementsInRange(range: Range, blockTags: Set<string>): Element
 	return blocks;
 }
 
-function wrapRangeAcrossBlocks(range: Range, span: HighlightSpan, color: string, blockTags: Set<string>): HTMLElement {
+function wrapRangeAcrossBlocks(range: Range, span: HighlightSpan, color: string, blockTags: Set<string>): HTMLElement[] {
 	// Collect all text nodes in the range
 	const textNodesWithOffsets: Array<{ node: Text; startOffset: number; endOffset: number }> = [];
 	collectTextNodesInRange(range, textNodesWithOffsets);
 
 	if (textNodesWithOffsets.length === 0) {
-		return createHighlightSpan(color, span);
+		return [createHighlightSpan(color, span)];
 	}
 
 	// Group text nodes by their containing block
 	const groups = groupTextNodesByBlock(textNodesWithOffsets, blockTags);
 
-	// Wrap each group
-	let firstWrapper: HTMLElement | null = null;
+	// Wrap each group and collect all wrappers
+	const wrappers: HTMLElement[] = [];
 	for (let i = groups.length - 1; i >= 0; i--) {
 		const group = groups[i];
 		const wrapper = wrapTextNodeGroup(group, color, span);
-		if (i === 0) {
-			firstWrapper = wrapper;
-		}
+		wrappers.unshift(wrapper); // Add to beginning to maintain order
 	}
 
-	return firstWrapper!;
+	return wrappers;
 }
 
 function wrapRangeWithinBlock(range: Range, span: HighlightSpan, color: string): HTMLElement {
