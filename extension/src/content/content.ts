@@ -31,39 +31,42 @@ declare global {
 
 if (!window.__FactCheck_injected) {
 	window.__FactCheck_injected = true;
+	chrome.runtime.onMessage.addListener(onMessage);
+}
 
-	chrome.runtime.onMessage.addListener(
-		(message: RuntimeMessage, _sender: chrome.runtime.MessageSender, sendResponse: (response?: unknown) => void) => {
-			if (!message || !("type" in message)) return false;
+function onMessage(
+	message: RuntimeMessage,
+	_sender: chrome.runtime.MessageSender,
+	sendResponse: (response?: unknown) => void
+) {
+	if (!message || !("type" in message)) return false;
 
-			switch (message.type) {
-				case "startJob": {
-					const { context, content, meta } = resolveStartJobContext(message);
-					runJob({ text: content, meta, context }).catch((err: unknown) => console.error("runJob error:", err));
-					sendResponse({ status: "job_started" });
-					return true;
-				}
-
-				case "getArticles": {
-					sendResponse({ articles: collectArticles() });
-					return true;
-				}
-
-				case "getArticleText": {
-					sendResponse({ articleText: collectArticleText(message.articleId) });
-					return true;
-				}
-
-				case "ping": {
-					sendResponse({ status: "pong" });
-					return true;
-				}
-
-				default:
-					return false;
-			}
+	switch (message.type) {
+		case "startJob": {
+			const { context, content, meta } = resolveStartJobContext(message);
+			runJob({ text: content, meta, context }).catch((err: unknown) => console.error("runJob error:", err));
+			sendResponse({ status: "job_started" });
+			return true;
 		}
-	);
+
+		case "getArticles": {
+			sendResponse({ articles: collectArticles() });
+			return true;
+		}
+
+		case "getArticleText": {
+			sendResponse({ articleText: collectArticleText(message.articleId) });
+			return true;
+		}
+
+		case "ping": {
+			sendResponse({ status: "pong" });
+			return true;
+		}
+
+		default:
+			return false;
+	}
 }
 
 function resolveStartJobContext(payload: StartJobPayload): {
