@@ -8,7 +8,7 @@ import {
 	buildDocumentContext,
 	type HighlightContext
 } from "./articleScraper";
-import { runJob } from "./jobRunner";
+import { runJob } from "./services/jobRunner";
 
 type RuntimeMessage =
 	| ({ type: "startJob" } & StartJobPayload)

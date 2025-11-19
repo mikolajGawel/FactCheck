@@ -1,8 +1,8 @@
 /// <reference types="chrome" />
 
-import type { HighlightContext } from "./articleScraper";
-import { buildDocumentContext } from "./articleScraper";
-import { highlightText } from "./factHighlight";
+import type { HighlightContext } from "../articleScraper";
+import { buildDocumentContext } from "../articleScraper";
+import { highlightText } from "../highlighting/factHighlight";
 
 const serverAddress = process.env.SERVER ?? "";
 

@@ -1,4 +1,4 @@
-import type { HighlightSpan } from "../types/highlightTypes";
+import type { HighlightSpan } from "../../types/highlightTypes";
 
 let tooltip: HTMLDivElement | null = null;
 
@@ -50,10 +50,7 @@ export function hideTooltip(): void {
 
 function buildTooltipHtml(span: HighlightSpan): string {
 	const type = escapeHtml(span.type ?? "unknown");
-	const confidence =
-		typeof span.confidence === "number"
-			? `${Math.round(span.confidence * 100)}%`
-			: "n/a";
+	const confidence = typeof span.confidence === "number" ? `${Math.round(span.confidence * 100)}%` : "n/a";
 	const rationale = escapeHtml(span.rationale ?? "No rationale provided.");
 	return `
 		<div><strong>Type:</strong> ${type}</div>

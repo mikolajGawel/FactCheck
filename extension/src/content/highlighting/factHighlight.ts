@@ -1,5 +1,5 @@
-import type { HighlightContext, TextPointer } from "./articleScraper";
-import type { HighlightSpan, HighlightResult } from "../types/highlightTypes";
+import type { HighlightContext, TextPointer } from "../articleScraper";
+import type { HighlightSpan, HighlightResult } from "../../types/highlightTypes";
 import { ensureTooltip, attachTooltip, hideTooltip } from "./highlightTooltip";
 
 const TYPE_COLORS: Record<string, string> = {
