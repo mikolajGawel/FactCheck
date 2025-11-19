@@ -10,6 +10,7 @@ export const DEFAULT_NOISE_SELECTORS = [
 	"noscript",
 	"template",
 	"button",
+	"time",
 	"form"
 ];
 
