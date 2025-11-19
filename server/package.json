@@ -23,6 +23,7 @@
         "zod": "^4.1.12"
     },
     "devDependencies": {
+        "@types/cheerio": "^0.22.35",
         "@types/express": "^5.0.5",
         "@types/node": "^24.10.1",
         "chokidar": "^4.0.3",

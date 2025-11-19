@@ -31,6 +31,7 @@ export interface HighlightContext {
 	source: HighlightSource;
 	root: HTMLElement;
 	text: string;
+	html: string;
 	pointers: TextPointer[];
 	ignoreSelector: string;
 	title?: string | null;
