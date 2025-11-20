@@ -33,7 +33,7 @@ export interface Sentence {
 // --- Nowe: lista skrótów chronionych przed dzieleniem ---
 
 const PROTECTED_ABBREVIATIONS = [
-	"dr", "inż", "mgr", "prof", "hab", "hab\\.", "hab\\", "dot", "s", "ul", "al", "ks", "pl", "ppłk", "płk", "gen", "mjr", "por", "ppor", "kpt", "st", "plk"
+	"dr", "inż", "mgr", "prof", "hab", "hab\\.", "hab\\", "dot", "s", "ul", "al", "ks", "pl", "ppłk", "płk", "gen", "mjr", "por", "ppor", "kpt", "st", "plk", "św", "r","tyś","tys", "mln", "mld","oprac"
 ];
 
 // --- Funkcje zabezpieczające kropki przed dzieleniem ---
@@ -43,6 +43,14 @@ function protectDots(text: string): string {
 
 	// 1. Skróty: dr. → dr§
 	for (const abbr of PROTECTED_ABBREVIATIONS) {
+	// specjalna logika dla "r." tak nie dało sie inaczej
+	if (abbr === "r") {
+		result = result.replace(/\br\.(?=\s+[A-ZĄĆĘŁŃÓŚŹŻ])/g, "r."); 
+		result = result.replace(/\br\.(?=\s+[^A-ZĄĆĘŁŃÓŚŹŻ])/g, "r§");
+		continue;
+	}
+
+
 		const re = new RegExp(`\\b${abbr}\\.(?=\\s|$)`, "gi");
 		result = result.replace(re, m => m.slice(0, -1) + "§");
 	}
@@ -247,10 +255,9 @@ function isStructuralBreakSignificant(pathA: string[], pathB: string[]): boolean
 	return false;
 }
 
-// --- Nowy segmenter z ochroną kropek ---
+// --- segmenter z ochroną kropek ---
 
 function standardSegment(text: string, language: string) {
-	// zabezpieczamy kropki
 	const protectedText = protectDots(text);
 
 	const res: { text: string; start: number; end: number }[] = [];
