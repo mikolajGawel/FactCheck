@@ -27,6 +27,7 @@ export function buildDocumentContext(): HighlightContext {
 		source: "document",
 		root,
 		text: snapshot.text,
+		html: root.outerHTML,
 		pointers: snapshot.pointers,
 		ignoreSelector: HIGHLIGHT_IGNORE_SELECTOR,
 		title: document.title ?? null
@@ -40,6 +41,7 @@ export function buildCustomContext(content: string): HighlightContext {
 		source: "custom",
 		root,
 		text: normalizeText(content),
+		html: content,
 		pointers: [],
 		ignoreSelector: HIGHLIGHT_IGNORE_SELECTOR,
 		title: document.title ?? null
@@ -53,6 +55,7 @@ export function createContextFromNode(node: HTMLElement, articleId: number, sour
 		source,
 		root: node,
 		text: snapshot.text,
+		html: node.outerHTML,
 		pointers: snapshot.pointers,
 		ignoreSelector: HIGHLIGHT_IGNORE_SELECTOR,
 		title: findArticleTitle(node) ?? null

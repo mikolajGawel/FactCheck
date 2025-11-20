@@ -1,7 +1,7 @@
 import OpenAI from "openai";
 import { AnalyzerResultSchema, SentenceLLMResponseSchema } from "../schemas/jobSchemas.js";
 import { logAICall } from "./logger.js";
-import { limitSentences, normalizeArticleText, segmentSentences } from "../utils/textUtils.js";
+import { limitSentences, segmentSentencesWithStructure, parseHtmlToBlocks } from "../utils/textUtils.js";
 import { escapeDangerousContent } from "../utils/sanitize.js";
 import { extractJsonObject, stringifyForPrompt } from "../utils/jsonUtils.js";
 import utils from "util";
@@ -43,13 +43,21 @@ function getOpenRouterClient() {
 export async function analyzeArticleSentences(payload, _context?) {
 	const { content, title = null } = payload;
 	const language = payload.language?.trim() || "en";
-	const normalizedText = normalizeArticleText(content);
 
-	if (normalizedText.length < 200) {
+	// ZMIANA: Najpierw parsujemy strukturę HTML
+	// Zakładamy, że payload.content to HTML string.
+	const textBlocks = parseHtmlToBlocks(content);
+
+	// Obliczamy całkowitą długość tekstu (do walidacji)
+	const totalTextLength = textBlocks.reduce((acc, block) => acc + block.text.length, 0);
+
+	if (totalTextLength < 200) {
 		throw new Error("Zbyt krótka treść artykułu do analizy (min. 200 znaków)");
 	}
 
-	const allSentences = segmentSentences(normalizedText, language) ?? [];
+	// ZMIANA: Używamy nowej funkcji segmentującej biorącej pod uwagę strukturę
+	const allSentences = segmentSentencesWithStructure(textBlocks, language) ?? [];
+
 	if (allSentences.length === 0) {
 		throw new Error("Nie udało się wyodrębnić zdań z artykułu");
 	}
@@ -62,7 +70,7 @@ export async function analyzeArticleSentences(payload, _context?) {
 		document: {
 			title,
 			language,
-			contentLength: normalizedText.length,
+			contentLength: totalTextLength, // Używamy obliczonej długości z bloków
 			sentenceCount: allSentences.length
 		},
 		summary: escapeDangerousContent(llmResponse.summary ?? null),

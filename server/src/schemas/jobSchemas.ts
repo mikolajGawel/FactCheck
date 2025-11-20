@@ -4,7 +4,7 @@ export const StartRequestSchema = z.object({
 	content: z
 		.string()
 		.min(200, "Treść artykułu musi mieć co najmniej 200 znaków")
-		.max(25000, "Treść artykułu jest zbyt długa (limit 25k znaków)"),
+		.max(100000, "Treść artykułu jest zbyt długa (limit 100k znaków)"),
 	title: z.string().max(512).trim().optional(),
 	url: z.string().url("Nieprawidłowy adres URL").optional(),
 	language: z.string().min(2).max(12).trim().optional()

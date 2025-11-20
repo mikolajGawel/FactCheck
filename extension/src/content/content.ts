@@ -77,7 +77,7 @@ function resolveStartJobContext(payload: StartJobPayload): {
 		const context = buildArticleContext(payload.articleId);
 		return {
 			context,
-			content: context.text,
+			content: context.html,
 			meta: { ...meta, title: meta.title ?? context.title ?? null }
 		};
 	}
@@ -90,7 +90,7 @@ function resolveStartJobContext(payload: StartJobPayload): {
 	const context = buildDocumentContext();
 	return {
 		context,
-		content: context.text,
+		content: context.html,
 		meta: { ...meta, title: meta.title ?? context.title ?? null }
 	};
 }

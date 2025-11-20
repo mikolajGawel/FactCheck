@@ -19,7 +19,7 @@ export interface RunJobOptions {
 
 export async function runJob(options: RunJobOptions = {}): Promise<void> {
 	const resolvedContext = options.context ?? buildDocumentContext();
-	const pageContent = typeof options.text === "string" ? options.text : resolvedContext.text;
+	const pageContent = typeof options.text === "string" ? options.text : resolvedContext.html;
 	const title = options.meta?.title ?? resolvedContext.title ?? null;
 	const url = options.meta?.url ?? (typeof location !== "undefined" ? location.href : null);
 	const language = navigator?.language?.split("-")[0] ?? "en";
