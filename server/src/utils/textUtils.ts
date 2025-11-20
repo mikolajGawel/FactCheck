@@ -3,52 +3,23 @@ import { normalizeText, DEFAULT_NOISE_SELECTORS } from "../../../shared/dist/tex
 
 // --- Konfiguracja ---
 
-// Tagi, które ZAWSZE wymuszają podział, jeśli następuje zmiana struktury
 const BLOCK_TAGS = new Set([
-	"address",
-	"article",
-	"aside",
-	"blockquote",
-	"dd",
-	"div",
-	"dl",
-	"dt",
-	"fieldset",
-	"figcaption",
-	"figure",
-	"footer",
-	"form",
-	"h1",
-	"h2",
-	"h3",
-	"h4",
-	"h5",
-	"h6",
-	"header",
-	"hr",
-	"li",
-	"main",
-	"nav",
-	"noscript",
-	"ol",
-	"p",
-	"pre",
-	"section",
-	"table",
-	"tfoot",
-	"ul",
-	"video",
-	"br"
+	"address", "article", "aside", "blockquote", "dd", "div", "dl", "dt", "fieldset",
+	"figcaption", "figure", "footer", "form", "h1", "h2", "h3", "h4", "h5", "h6",
+	"header", "hr", "li", "main", "nav", "noscript", "ol", "p", "pre", "section",
+	"table", "tfoot",	"ul", "video", "br"
 ]);
 
-const IGNORED_TAGS = new Set([...DEFAULT_NOISE_SELECTORS, "script", "style", "meta", "head", "link", "noscript"]);
+const IGNORED_TAGS = new Set([
+	...DEFAULT_NOISE_SELECTORS,
+	"script", "style", "meta", "head", "link", "noscript"
+]);
 
 // --- Typy ---
 
 export interface TextBlock {
 	text: string;
 	path: string[];
-	// Nowa flaga: czy ten blok jest częścią nagłówka?
 	isHeader: boolean;
 }
 
@@ -59,31 +30,49 @@ export interface Sentence {
 	end: number;
 }
 
-// --- Funkcje Eksportowane ---
+// --- Nowe: lista skrótów chronionych przed dzieleniem ---
+
+const PROTECTED_ABBREVIATIONS = [
+	"dr", "inż", "mgr", "prof", "hab", "hab\\.", "hab\\", "dot", "s", "ul", "al", "ks", "pl", "ppłk", "płk", "gen", "mjr", "por", "ppor", "kpt", "st", "plk"
+];
+
+// --- Funkcje zabezpieczające kropki przed dzieleniem ---
+
+function protectDots(text: string): string {
+	let result = text;
+
+	// 1. Skróty: dr. → dr§
+	for (const abbr of PROTECTED_ABBREVIATIONS) {
+		const re = new RegExp(`\\b${abbr}\\.(?=\\s|$)`, "gi");
+		result = result.replace(re, m => m.slice(0, -1) + "§");
+	}
+
+	// 2. Godziny / liczby: 8.20 → 8§20
+	result = result.replace(/(\d)\.(\d)/g, "$1§$2");
+
+	return result;
+}
+
+function restoreProtectedDots(text: string): string {
+	return text.replace(/§/g, ".");
+}
+
+// --- Eksportowane funkcje ---
 
 export function normalizeArticleText(raw: string) {
 	return normalizeText(raw);
 }
 
 export function limitSentences<T>(sentences: T[], maxCount?: number) {
-	if (!maxCount || sentences.length <= maxCount) {
-		return sentences;
-	}
+	if (!maxCount || sentences.length <= maxCount) return sentences;
 	return sentences.slice(0, maxCount);
 }
 
-/**
- * Parsuje HTML do listy bloków.
- * Wykrywa nagłówki JUŻ NA ETAPIE PARSOWANIA.
- */
 export function parseHtmlToBlocks(html: string): TextBlock[] {
-	console.log("HTML to parse:", html); // Debug log
 	const $ = cheerio.load(html);
 	const blocks: TextBlock[] = [];
 
-	// Rekurencyjna funkcja z kontekstem (czy jesteśmy w nagłówku?)
 	function traverse(node: any, path: string[], insideHeader: boolean) {
-		// 1. Obsługa tekstu
 		if (node.type === "text") {
 			const text = $(node).text();
 			const normalized = normalizeText(text, { trim: false });
@@ -92,21 +81,17 @@ export function parseHtmlToBlocks(html: string): TextBlock[] {
 				blocks.push({
 					text: normalized,
 					path: [...path],
-					isHeader: insideHeader // Zapisujemy flagę bezpośrednio w bloku
+					isHeader: insideHeader
 				});
 			}
 			return;
 		}
 
-		// 2. Obsługa tagów
 		if (node.type === "tag") {
-			const rawTagName = node.name || "";
-			const tagName = rawTagName.toLowerCase();
-
+			const tagName = (node.name || "").toLowerCase();
 			if (IGNORED_TAGS.has(tagName)) return;
 			if (tagName === "br") return;
 
-			// Sprawdź atrybuty ignorowania
 			const attribs = node.attribs || {};
 			if (
 				attribs["hidden"] !== undefined ||
@@ -116,20 +101,15 @@ export function parseHtmlToBlocks(html: string): TextBlock[] {
 				return;
 			}
 
-			// Sprawdzamy, czy wchodzimy w nagłówek (lub już w nim jesteśmy)
 			const isCurrentTagHeader = /^h[1-6]$/.test(tagName);
 			const nextInsideHeader = insideHeader || isCurrentTagHeader;
 
-			$(node)
-				.contents()
-				.each((i, child) => {
-					const uniqueTag = `${tagName}[${i}]`;
-					traverse(child, [...path, uniqueTag], nextInsideHeader);
-				});
+			$(node).contents().each((i, child) => {
+				traverse(child, [...path, `${tagName}[${i}]`], nextInsideHeader);
+			});
 		}
 	}
 
-	// Uruchomienie
 	const body = $("body");
 	const root = body.length > 0 ? body : $.root().children();
 
@@ -159,7 +139,6 @@ function normalizeBlocks(rawBlocks: TextBlock[]): TextBlock[] {
 				hasOutput = true;
 			}
 		}
-
 		if (newText.length > 0) {
 			normalizedBlocks.push({ ...block, text: newText });
 		}
@@ -194,39 +173,21 @@ export function segmentSentencesWithStructure(blocks: TextBlock[], language = "e
 		const currentBlock = blocks[i];
 		const nextBlock = blocks[i + 1];
 
-		// Doklejanie tekstu do bufora
 		currentBuffer += currentBlock.text;
 
-		// --- LOGIKA DECYZYJNA ---
+		let hasSentenceBreakInside = /[.!?]/.test(currentBlock.text);
 
-		// 1. Sprawdzamy interpunkcję wewnątrz (kropka, pytajnik, wykrzyknik)
-		let hasSentenceBreakInside = false;
-		if (/[.!?]/.test(currentBlock.text)) {
-			hasSentenceBreakInside = true;
-		}
-
-		// 2. Sprawdzamy, czy musimy wymusić podział STRUKTURALNY
 		let forceStructuralBreak = false;
 
 		if (!hasSentenceBreakInside && nextBlock) {
-			// A. Jeśli bieżący blok to NAGŁÓWEK -> ZAWSZE KONIEC ZDANIA.
-			if (currentBlock.isHeader) {
+			if (currentBlock.isHeader || nextBlock.isHeader) {
 				forceStructuralBreak = true;
-			}
-			// B. Jeśli następny blok to NAGŁÓWEK -> ZAWSZE KONIEC ZDANIA (przed wejściem w tytuł).
-			else if (nextBlock.isHeader) {
-				forceStructuralBreak = true;
-			}
-			// C. Analiza ścieżek (dla div vs p itp.)
-			else if (isStructuralBreakSignificant(currentBlock.path, nextBlock.path)) {
+			} else if (isStructuralBreakSignificant(currentBlock.path, nextBlock.path)) {
 				forceStructuralBreak = true;
 			}
 		}
 
-		// --- AKCJE ---
-
 		if (hasSentenceBreakInside) {
-			// Jeśli jest kropka, dzielimy standardowo
 			const subSentences = standardSegment(currentBuffer, language);
 			subSentences.forEach(s => {
 				sentences.push({
@@ -239,13 +200,10 @@ export function segmentSentencesWithStructure(blocks: TextBlock[], language = "e
 			sentenceStartIndex += currentBuffer.length;
 			currentBuffer = "";
 		} else if (forceStructuralBreak) {
-			// Nie ma kropki, ale struktura wymusza podział (np. H1 bez kropki)
 			commitSentence(currentBuffer);
 		}
-		// Jeśli nie ma kropki i nie ma zmiany struktury (np. span wewnątrz p), pętla leci dalej.
 	}
 
-	// Resztki w buforze
 	if (currentBuffer.trim()) {
 		const subSentences = standardSegment(currentBuffer, language);
 		subSentences.forEach(s => {
@@ -261,8 +219,6 @@ export function segmentSentencesWithStructure(blocks: TextBlock[], language = "e
 	return sentences;
 }
 
-// --- Funkcje Pomocnicze ---
-
 function isStructuralBreakSignificant(pathA: string[], pathB: string[]): boolean {
 	const getTagName = (tagStr: string) => {
 		const match = tagStr.match(/^([a-zA-Z0-9]+)/);
@@ -277,7 +233,6 @@ function isStructuralBreakSignificant(pathA: string[], pathB: string[]): boolean
 		divergeIndex++;
 	}
 
-	// Jeśli jedna ścieżka jest rodzicem drugiej (np. p -> b wewnątrz p), nie przerywamy
 	if (divergeIndex === pathA.length || divergeIndex === pathB.length) {
 		return false;
 	}
@@ -285,7 +240,6 @@ function isStructuralBreakSignificant(pathA: string[], pathB: string[]): boolean
 	const tagA = getTagName(pathA[divergeIndex]);
 	const tagB = getTagName(pathB[divergeIndex]);
 
-	// Jeśli rozwidlenie następuje na tagach blokowych -> PRZERWIJ
 	if (BLOCK_TAGS.has(tagA) || BLOCK_TAGS.has(tagB)) {
 		return true;
 	}
@@ -293,20 +247,25 @@ function isStructuralBreakSignificant(pathA: string[], pathB: string[]): boolean
 	return false;
 }
 
+// --- Nowy segmenter z ochroną kropek ---
+
 function standardSegment(text: string, language: string) {
+	// zabezpieczamy kropki
+	const protectedText = protectDots(text);
+
 	const res: { text: string; start: number; end: number }[] = [];
 
 	if (typeof Intl !== "undefined" && typeof (Intl as any).Segmenter === "function") {
 		const segmenter = new (Intl as any).Segmenter(language, { granularity: "sentence" });
-		for (const s of segmenter.segment(text)) {
-			const t = s.segment.trim();
+		for (const s of segmenter.segment(protectedText)) {
+			const t = restoreProtectedDots(s.segment.trim());
 			if (t) res.push({ text: t, start: s.index, end: s.index + s.segment.length });
 		}
 	} else {
 		const re = /[^.!?]+[.!?]+|[^.!?]+$/g;
 		let m;
-		while ((m = re.exec(text)) !== null) {
-			const t = m[0].trim();
+		while ((m = re.exec(protectedText)) !== null) {
+			const t = restoreProtectedDots(m[0].trim());
 			if (t) res.push({ text: t, start: m.index, end: m.index + m[0].length });
 		}
 	}
