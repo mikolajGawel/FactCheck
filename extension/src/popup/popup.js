@@ -6,9 +6,7 @@ let selectedId = null;
 let articles = [];
 let jobState = 0; // 0: idle, 1: progress, 2: completed, -1: error
 
-/* -----------------------------
-   HELPERS
------------------------------ */
+
 function escapeHtml(s) {
 	return (s || "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
@@ -145,14 +143,14 @@ async function loadArticles() {
 
 	const ok = await ensureContentScript(tab.id);
 	if (!ok) {
-		articlesContainer.innerHTML = '<div class="loading">Content script injection failed.</div>';
+		articlesContainer.innerHTML = '<div class="loading">Błąd. Wstrzyknięcie skrytpu nie powiodoło się.</div>';
 		startBtn.disabled = true;
 		return;
 	}
 
 	chrome.tabs.sendMessage(tab.id, { type: "getArticles" }, response => {
 		if (chrome.runtime.lastError || !response) {
-			articlesContainer.innerHTML = '<div class="loading">Failed to get articles.</div>';
+			articlesContainer.innerHTML = '<div class="loading">Problem z załadowaniem artykułu.</div>';
 			startBtn.disabled = true;
 			return;
 		}
@@ -182,7 +180,7 @@ startBtn.addEventListener("click", async () => {
 			url: tab.url
 		},
 		resp => {
-			// If the content script didn't respond, mark job as failed in background
+	
 			if (chrome.runtime.lastError) {
 				chrome.runtime.sendMessage({
 					type: "jobFailed",
@@ -200,7 +198,7 @@ chrome.runtime.onMessage.addListener(async message => {
 	if (message.type !== "stateUpdated") return;
 
 	const tab = await queryActiveTab();
-	if (message.tabId !== tab.id) return; // update dotyczy innej karty
+	if (message.tabId !== tab.id) return; 
 
 	jobState = message.jobState;
 
@@ -244,12 +242,9 @@ async function fetchAndApplyState() {
 	}
 }
 
-// Run when popup is opened or gains focus
+
 document.addEventListener("DOMContentLoaded", fetchAndApplyState);
 window.addEventListener("focus", fetchAndApplyState);
 document.addEventListener("visibilitychange", () => {
 	if (!document.hidden) fetchAndApplyState();
 });
-
-// // Fallback immediate invocation (safe if script loaded after DOM)
-// fetchAndApplyState();

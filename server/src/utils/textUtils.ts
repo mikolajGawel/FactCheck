@@ -33,7 +33,7 @@ export interface Sentence {
 // --- Nowe: lista skrótów chronionych przed dzieleniem ---
 
 const PROTECTED_ABBREVIATIONS = [
-	"dr", "inż", "mgr", "prof", "hab", "hab\\.", "hab\\", "dot", "s", "ul", "al", "ks", "pl", "ppłk", "płk", "gen", "mjr", "por", "ppor", "kpt", "st", "plk", "św", "r","tyś","tys", "mln", "mld","oprac"
+	"dr", "inż", "mgr", "prof", "hab", "hab\\.", "hab\\", "dot", "s", "ul", "al", "ks", "pl", "ppłk", "płk", "gen", "mjr", "por", "ppor", "kpt", "st", "plk", "św", "r","tyś","tys", "mln", "mld","oprac","prok"
 ];
 
 // --- Funkcje zabezpieczające kropki przed dzieleniem ---

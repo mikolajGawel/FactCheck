@@ -24,18 +24,16 @@ function showTooltipForNode(node: HTMLElement, html: string): void {
 	tooltip.innerHTML = html;
 	tooltip.style.display = "block";
 
-	// compute after display so offsetWidth/offsetHeight are valid
 	const rect = node.getBoundingClientRect();
 
 	let x = rect.left;
-	let y = rect.bottom + 6; // sits *under* the text
+	let y = rect.bottom + 6; 
 
-	// Prevent off-screen overflow
 	if (x + tooltip.offsetWidth > window.innerWidth) {
 		x = window.innerWidth - tooltip.offsetWidth - 10;
 	}
 	if (y + tooltip.offsetHeight > window.innerHeight) {
-		y = rect.top - tooltip.offsetHeight - 6; // show above if not enough space below
+		y = rect.top - tooltip.offsetHeight - 6;
 	}
 
 	tooltip.style.left = `${x}px`;

@@ -9,9 +9,6 @@
 let tabJobStates = {}; // przechowuje stan joba dla każdej zakładki
 let activeTabId = null; // śledzenie aktywnej karty
 
-/* -------------------------------------------------
-   FUNKCJE POMOCNICZE
-------------------------------------------------- */
 function setJobState(tabId, state) {
 	tabJobStates[tabId] = state;
 }
@@ -36,11 +33,7 @@ function broadcastState(tabId, jobState, error = null) {
 	);
 }
 
-/* -------------------------------------------------
-   1. RESET STANU PRZY ZMIANIE URL AKTYWNEJ KARTY OR REFRESH
-------------------------------------------------- */
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-	// when active tab navigates to a new URL
 	if (changeInfo.url && tabId === activeTabId) {
 		console.log(`Active tab ${tabId} navigated -> resetting job state`);
 		resetJobState(tabId);
@@ -48,7 +41,6 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 		return;
 	}
 
-	// when a page starts loading (refresh or navigation that doesn't change URL), reset completed->idle
 	if (changeInfo.status === "loading") {
 		if (tabJobStates[tabId] === 2) {
 			console.log(`Tab ${tabId} started loading -> resetting completed state to idle`);
@@ -58,9 +50,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 	}
 });
 
-/* -------------------------------------------------
-   2. AKTYWOWANIE NOWEJ KARTY
-------------------------------------------------- */
+
 chrome.tabs.onActivated.addListener(activeInfo => {
 	activeTabId = activeInfo.tabId;
 
@@ -72,9 +62,7 @@ chrome.tabs.onActivated.addListener(activeInfo => {
 	broadcastState(activeTabId, tabJobStates[activeTabId]);
 });
 
-/* -------------------------------------------------
-   3. INICJALIZACJA AKTYWNEJ KARTY
-------------------------------------------------- */
+
 chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
 	if (tabs.length > 0) {
 		activeTabId = tabs[0].id;
@@ -84,9 +72,7 @@ chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
 	}
 });
 
-/* -------------------------------------------------
-   4. USUWANIE STANU PRZY ZAMKNIĘCIU KARTY
-------------------------------------------------- */
+
 chrome.tabs.onRemoved.addListener(tabId => {
 	if (tabJobStates[tabId] !== undefined) {
 		delete tabJobStates[tabId];
@@ -98,14 +84,10 @@ chrome.tabs.onRemoved.addListener(tabId => {
 	}
 });
 
-/* -------------------------------------------------
-   5. ODBIÓR WIADOMOŚCI Z POPUP / CONTENT SCRIPT
-------------------------------------------------- */
-// switched to internal onMessage listener (was onMessageExternal)
+
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 	const senderTabId = sender.tab?.id;
-
-	// POPUP: pyta o stan zakładki
 	if (message.type === "getJobState") {
 		const tabId = message.tabId ?? senderTabId ?? activeTabId;
 		const state = tabJobStates[tabId] ?? 0;
@@ -113,7 +95,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 		return; // synchronous response
 	}
 
-	// POPUP: ustawia stan joba
 	if (message.type === "setJobState") {
 		const tabId = message.tabId ?? senderTabId ?? activeTabId;
 		setJobState(tabId, message.jobState);
@@ -121,7 +102,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 		return;
 	}
 
-	// CONTENT SCRIPT: job zakończony
 	if (message.type === "jobCompleted") {
 		if (senderTabId) {
 			setJobState(senderTabId, 2);
@@ -131,7 +111,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 		return;
 	}
 
-	// CONTENT SCRIPT: job failed
 	if (message.type === "jobFailed") {
 		const tabId = message.tabId ?? senderTabId;
 		if (tabId) {
