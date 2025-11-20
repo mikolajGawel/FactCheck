@@ -1,5 +1,5 @@
 import * as cheerio from "cheerio";
-import { normalizeText } from "../../../shared/dist/textProcessing.js";
+import { normalizeText, DEFAULT_NOISE_SELECTORS } from "../../../shared/dist/textProcessing.js";
 
 // --- Konfiguracja ---
 
@@ -40,6 +40,8 @@ const BLOCK_TAGS = new Set([
 	"video",
 	"br"
 ]);
+
+const IGNORED_TAGS = new Set([...DEFAULT_NOISE_SELECTORS, "script", "style", "meta", "head", "link", "noscript"]);
 
 // --- Typy ---
 
@@ -101,8 +103,18 @@ export function parseHtmlToBlocks(html: string): TextBlock[] {
 			const rawTagName = node.name || "";
 			const tagName = rawTagName.toLowerCase();
 
-			if (["script", "style", "meta", "head", "link", "noscript"].includes(tagName)) return;
+			if (IGNORED_TAGS.has(tagName)) return;
 			if (tagName === "br") return;
+
+			// Sprawdź atrybuty ignorowania
+			const attribs = node.attribs || {};
+			if (
+				attribs["hidden"] !== undefined ||
+				attribs["aria-hidden"] === "true" ||
+				attribs["data-factcheck-ignore"] !== undefined
+			) {
+				return;
+			}
 
 			// Sprawdzamy, czy wchodzimy w nagłówek (lub już w nim jesteśmy)
 			const isCurrentTagHeader = /^h[1-6]$/.test(tagName);
@@ -123,7 +135,37 @@ export function parseHtmlToBlocks(html: string): TextBlock[] {
 
 	root.contents().each((i, node) => traverse(node, [], false));
 
-	return blocks;
+	return normalizeBlocks(blocks);
+}
+
+function normalizeBlocks(rawBlocks: TextBlock[]): TextBlock[] {
+	const normalizedBlocks: TextBlock[] = [];
+	let pendingSpace = false;
+	let hasOutput = false;
+
+	for (const block of rawBlocks) {
+		let newText = "";
+		for (const char of block.text) {
+			if (/[\s\u00a0]/.test(char)) {
+				if (hasOutput) {
+					pendingSpace = true;
+				}
+			} else {
+				if (pendingSpace) {
+					newText += " ";
+					pendingSpace = false;
+				}
+				newText += char;
+				hasOutput = true;
+			}
+		}
+
+		if (newText.length > 0) {
+			normalizedBlocks.push({ ...block, text: newText });
+		}
+	}
+
+	return normalizedBlocks;
 }
 
 export function segmentSentencesWithStructure(blocks: TextBlock[], language = "en"): Sentence[] {
