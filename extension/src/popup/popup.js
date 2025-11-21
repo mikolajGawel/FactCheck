@@ -98,6 +98,14 @@ function renderCompleted() {
 	statusEl.innerHTML = "<h3>Analiza zakończona</h3>";
 }
 
+function renderOtherPendingProgress(){
+	articlesContainer.innerHTML = '<div class="state"><img src="inprogress.gif"></div>';
+	startBtn.style.display = "none";
+	statusEl.innerHTML = `
+            <h3>Na innej stronie trwa już analiza.</h3>
+			<p>Musisz poczekać na zakończenie tamtego procesu.</p>`;
+}
+
 function renderError(errorMessage) {
 	articlesContainer.innerHTML = '<div class="state"><img src="error.png" style="width:64px"></div>';
 	startBtn.style.display = "none";
@@ -173,10 +181,7 @@ startBtn.addEventListener("click", async () => {
     });
 
     if (globalState.running && globalState.tabId !== tab.id) {
-        statusEl.innerHTML = `
-            <h3 style="color:#d33;">🔒 Na innej stronie trwa już analiza.</h3>
-            <p>Musisz poczekać na zakończenie tamtego zadania.</p>
-        `;
+        renderOtherPendingProgress();
         return;
     }
 
@@ -190,10 +195,7 @@ startBtn.addEventListener("click", async () => {
     });
 
     if (!response?.ok && response?.reason === "another_job_running") {
-        statusEl.innerHTML = `
-            <h3 style="color:#d33;">🔒 Na innej stronie trwa analiza.</h3>
-            <p>Poczekaj aż job na karcie ${response.tabId} się zakończy.</p>
-        `;
+       renderOtherPendingProgress();
         return;
     }
 
@@ -261,13 +263,7 @@ async function fetchAndApplyState() {
     if (globalJob.running && globalJob.tabId !== tab.id) {
         jobState = 0;
         startBtn.style.display = "none";
-        articlesContainer.innerHTML = `
-            <div class="state">
-                <img src="inprogress.gif">
-                <h3>Na innej stronie trwa analiza.</h3>
-                <p>Wróć do poprzedniej karty aby zobaczyć postęp.</p>
-            </div>
-        `;
+		renderOtherPendingProgress();
         return;
     }
 
