@@ -31,48 +31,71 @@ export async function runJob(options: RunJobOptions = {}): Promise<void> {
 	const url = options.meta?.url ?? (typeof location !== "undefined" ? location.href : null);
 	const language = navigator?.language?.split("-")[0] ?? "en";
 
-	const start = await fetch(`${serverAddress}/start`, {
-		method: "POST",
-		headers: {
-			"Content-Type": "application/json",
-			...getAuthHeaders()
-		},
-		body: JSON.stringify({ content: pageContent, title, url, language })
-	});
+	// Try to start the job on the server. If fetch throws (network/CORS) or a non-OK
+	// response is returned, treat it like any other job failure and notify the popup.
+	let job_id: string | null = null;
+	try {
+		const start = await fetch(`${serverAddress}/start`, {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+				...getAuthHeaders()
+			},
+			body: JSON.stringify({ content: pageContent, title, url, language })
+		});
 
-	if (!start.ok) {
-		const errorText = await start.text();
-		console.error("Server start failed:", errorText);
-		chrome.runtime.sendMessage({ type: "jobFailed", error: `Server failed to start job: ${start.status}` });
+		if (!start.ok) {
+			// Keep message consistent for non-ok responses
+			const errorText = await start.text().catch(() => "(no body)");
+			const message = `Server failed to start job: ${start.status} ${errorText}`;
+			console.error("Server start failed:", message);
+			chrome.runtime.sendMessage({ type: "jobFailed", error: message });
+			return;
+		}
+
+		const body = await start.json();
+		job_id = body.job_id;
+	} catch (err: unknown) {
+		// Treat thrown errors (CORS, network errors, etc.) the same way as non-ok
+		const message = err && typeof err === "object" && "message" in err ? (err as any).message : String(err);
+		console.error("Server start failed:", message);
+		chrome.runtime.sendMessage({ type: "jobFailed", error: `Server failed to start job: ${message}` });
 		return;
 	}
-
-	const { job_id }: { job_id: string } = await start.json();
 
 	let done = false;
 	let jobError = null;
 	while (!done) {
-		const statusRes = await fetch(`${serverAddress}/status?id=${job_id}`, {
-			headers: { ...getAuthHeaders() }
-		});
-		if (!statusRes.ok) {
-			jobError = `Status check failed with status ${statusRes.status}.`;
+		try {
+			const statusRes = await fetch(`${serverAddress}/status?id=${job_id}`, {
+				headers: { ...getAuthHeaders() }
+			});
+
+			if (!statusRes.ok) {
+				jobError = `Status check failed with status ${statusRes.status}.`;
+				done = true;
+				break;
+			}
+
+			const status = await statusRes.json();
+			if (status.status === "done") {
+				highlightText(status.result, resolvedContext);
+				console.log("Wynik:", status.result);
+				chrome.runtime.sendMessage({ type: "jobCompleted" });
+				done = true;
+			} else if (status.status === "failed" || status.status === "error") {
+				jobError = status.message || "Job failed on the server.";
+				done = true;
+			} else {
+				console.log("Czekam...");
+				await sleep(1000);
+			}
+		} catch (err: unknown) {
+			// Any thrown error during status check (network/CORS/json parse) should
+			// be reported the same way as other failures.
+			jobError = err && typeof err === "object" && "message" in err ? (err as any).message : String(err);
 			done = true;
 			break;
-		}
-
-		const status = await statusRes.json();
-		if (status.status === "done") {
-			highlightText(status.result, resolvedContext);
-			console.log("Wynik:", status.result);
-			chrome.runtime.sendMessage({ type: "jobCompleted" });
-			done = true;
-		} else if (status.status === "failed" || status.status === "error") {
-			jobError = status.message || "Job failed on the server.";
-			done = true;
-		} else {
-			console.log("Czekam...");
-			await sleep(1000);
 		}
 	}
 
