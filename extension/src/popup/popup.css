@@ -120,3 +120,7 @@ button[disabled] {
 	margin-inline: auto;
 	width: 70%;
 }
+.secondary-text{
+	font-size: 0.6em; 
+	font-weight: normal;
+}

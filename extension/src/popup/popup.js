@@ -1,6 +1,6 @@
 const articlesContainer = document.getElementById("articlesContainer");
 const startBtn = document.getElementById("startBtn");
-const statusEl = document.getElementById("status");
+const titleText = document.getElementById("popupTitle");
 
 let selectedId = null;
 let articles = [];
@@ -83,33 +83,34 @@ function selectArticle(id, node) {
 	Array.from(articlesContainer.querySelectorAll(".article-item")).forEach(el => el.classList.remove("selected"));
 	node.classList.add("selected");
 	startBtn.disabled = false;
-	statusEl.textContent = "";
 }
 
 function renderInProgress() {
 	articlesContainer.innerHTML = '<div class="state"><img src="inprogress.gif"></div>';
 	startBtn.style.display = "none";
-	statusEl.innerHTML = "<h3>W trakcie analizy...</h3>";
+	titleText.textContent = "Analiza w toku";
 }
 
 function renderCompleted() {
 	articlesContainer.innerHTML = '<div class="state"><img src="completed.png"></div>';
 	startBtn.style.display = "none";
-	statusEl.innerHTML = "<h3>Analiza zakończona</h3>";
+	titleText.innerHTML = "Analiza zakończona";
 }
 
 function renderOtherPendingProgress(){
 	articlesContainer.innerHTML = '<div class="state"><img src="inprogress.gif"></div>';
 	startBtn.style.display = "none";
-	statusEl.innerHTML = `
-            <h3>Na innej stronie trwa już analiza.</h3>
-			<p>Musisz poczekać na zakończenie tamtego procesu.</p>`;
+	titleText.innerHTML = `
+            Na innej stronie trwa już analiza.<br>
+			<span class="secondary-text">Musisz poczekać na zakończenie tamtego procesu.</span>`;
 }
 
 function renderError(errorMessage) {
 	articlesContainer.innerHTML = '<div class="state"><img src="error.png" style="width:64px"></div>';
 	startBtn.style.display = "none";
-	statusEl.innerHTML = `<h3>Błąd</h3><p>${escapeHtml(errorMessage)}</p>`;
+	titleText.innerHTML = `
+		Błąd<br>
+		<span class="secondary-text">${escapeHtml(errorMessage)}</span>`;
 }
 
 /* -----------------------------
