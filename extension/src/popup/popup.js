@@ -163,33 +163,55 @@ async function loadArticles() {
    EVENT LISTENERS
 ----------------------------- */
 startBtn.addEventListener("click", async () => {
-	if (selectedId === null) return;
-	const tab = await queryActiveTab();
-	if (!tab || !tab.id) return;
+    if (selectedId === null) return;
 
-	setJobState(1);
-	renderInProgress();
+    const tab = await queryActiveTab();
+    if (!tab || !tab.id) return;
 
-	const article = articles.find(a => a.id === selectedId);
-	chrome.tabs.sendMessage(
-		tab.id,
-		{
-			type: "startJob",
-			articleId: selectedId,
-			title: article?.title ?? null,
-			url: tab.url
-		},
-		resp => {
-	
-			if (chrome.runtime.lastError) {
-				chrome.runtime.sendMessage({
-					type: "jobFailed",
-					error: chrome.runtime.lastError.message
-				});
-			}
-		}
-	);
+    const globalState = await new Promise(resolve => {
+        chrome.runtime.sendMessage({ type: "getGlobalJobState" }, res => resolve(res));
+    });
+
+    if (globalState.running && globalState.tabId !== tab.id) {
+        statusEl.innerHTML = `
+            <h3 style="color:#d33;">🔒 Na innej stronie trwa już analiza.</h3>
+            <p>Musisz poczekać na zakończenie tamtego zadania.</p>
+        `;
+        return;
+    }
+
+
+    const response = await new Promise(resolve => {
+        chrome.runtime.sendMessage({
+            type: "setJobState",
+            jobState: 1,
+            tabId: tab.id
+        }, resolve);
+    });
+
+    if (!response?.ok && response?.reason === "another_job_running") {
+        statusEl.innerHTML = `
+            <h3 style="color:#d33;">🔒 Na innej stronie trwa analiza.</h3>
+            <p>Poczekaj aż job na karcie ${response.tabId} się zakończy.</p>
+        `;
+        return;
+    }
+
+    renderInProgress();
+
+    const article = articles.find(a => a.id === selectedId);
+
+    chrome.tabs.sendMessage(
+        tab.id,
+        {
+            type: "startJob",
+            articleId: selectedId,
+            title: article?.title ?? null,
+            url: tab.url
+        }
+    );
 });
+
 
 /* -----------------------------
    RECEIVE STATE UPDATES
@@ -223,24 +245,52 @@ chrome.runtime.onMessage.addListener(async message => {
 ----------------------------- */
 
 async function fetchAndApplyState() {
-	const state = await getJobState();
-	jobState = state;
+    const tab = await queryActiveTab();
+    if (!tab || !tab.id) return;
 
-	switch (jobState) {
-		case 1:
-			renderInProgress();
-			break;
-		case 2:
-			renderCompleted();
-			break;
-		case -1:
-			renderError("Ostatnie zadanie nie powiodło się.");
-			break;
-		default:
-			loadArticles();
-			break;
-	}
+    // --- pobieramy globalny stan joba ---
+    const globalJob = await new Promise(resolve => {
+        chrome.runtime.sendMessage({ type: "getGlobalJobState" }, res => resolve(res));
+    });
+
+    if (globalJob.running && globalJob.tabId === tab.id) {
+        jobState = 1;
+        renderInProgress();
+        return;
+    }
+
+    if (globalJob.running && globalJob.tabId !== tab.id) {
+        jobState = 0;
+        startBtn.style.display = "none";
+        articlesContainer.innerHTML = `
+            <div class="state">
+                <img src="inprogress.gif">
+                <h3>Na innej stronie trwa analiza.</h3>
+                <p>Wróć do poprzedniej karty aby zobaczyć postęp.</p>
+            </div>
+        `;
+        return;
+    }
+
+    const state = await getJobState();
+    jobState = state;
+
+    switch (jobState) {
+        case 1:
+            renderInProgress();
+            break;
+        case 2:
+            renderCompleted();
+            break;
+        case -1:
+            renderError("Ostatnie zadanie nie powiodło się.");
+            break;
+        default:
+            loadArticles();
+            break;
+    }
 }
+
 
 
 document.addEventListener("DOMContentLoaded", fetchAndApplyState);

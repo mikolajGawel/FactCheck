@@ -1,123 +1,128 @@
-/**
- * Stany:
- * 0: idle
- * 1: progress
- * 2: completed
- * -1: error
- */
 
-let tabJobStates = {}; // przechowuje stan joba dla każdej zakładki
-let activeTabId = null; // śledzenie aktywnej karty
-
-function setJobState(tabId, state) {
-	tabJobStates[tabId] = state;
-}
-
-function resetJobState(tabId) {
-	tabJobStates[tabId] = 0;
-}
-
-// wysyła update do wszystkich popupów (broadcast)
-function broadcastState(tabId, jobState, error = null) {
-	chrome.runtime.sendMessage(
-		{
-			type: "stateUpdated",
-			tabId,
-			jobState,
-			error
-		},
-		() => {
-			if (chrome.runtime.lastError) {
-			}
-		}
-	);
-}
-
-chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-	if (changeInfo.url && tabId === activeTabId) {
-		console.log(`Active tab ${tabId} navigated -> resetting job state`);
-		resetJobState(tabId);
-		broadcastState(tabId, 0);
-		return;
-	}
-
-	if (changeInfo.status === "loading") {
-		if (tabJobStates[tabId] === 2) {
-			console.log(`Tab ${tabId} started loading -> resetting completed state to idle`);
-			resetJobState(tabId);
-			broadcastState(tabId, 0);
-		}
-	}
-});
-
-
-chrome.tabs.onActivated.addListener(activeInfo => {
-	activeTabId = activeInfo.tabId;
-
-	if (tabJobStates[activeTabId] === undefined) {
-		tabJobStates[activeTabId] = 0;
-	}
-
-	console.log(`Switched to tab ${activeTabId}, state: ${tabJobStates[activeTabId]}`);
-	broadcastState(activeTabId, tabJobStates[activeTabId]);
-});
-
-
-chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
-	if (tabs.length > 0) {
-		activeTabId = tabs[0].id;
-		if (tabJobStates[activeTabId] === undefined) {
-			tabJobStates[activeTabId] = 0;
-		}
-	}
-});
-
-
-chrome.tabs.onRemoved.addListener(tabId => {
-	if (tabJobStates[tabId] !== undefined) {
-		delete tabJobStates[tabId];
-		console.log(`Tab ${tabId} closed — state removed`);
-	}
-
-	if (tabId === activeTabId) {
-		activeTabId = null;
-	}
-});
-
+let globalJob = {
+    running: false,
+    tabId: null
+};
 
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-	const senderTabId = sender.tab?.id;
-	if (message.type === "getJobState") {
-		const tabId = message.tabId ?? senderTabId ?? activeTabId;
-		const state = tabJobStates[tabId] ?? 0;
-		sendResponse({ jobState: state });
-		return; // synchronous response
-	}
 
-	if (message.type === "setJobState") {
-		const tabId = message.tabId ?? senderTabId ?? activeTabId;
-		setJobState(tabId, message.jobState);
-		broadcastState(tabId, message.jobState);
-		return;
-	}
+    if (message.type === "getGlobalJobState") {
+        sendResponse({
+            running: globalJob.running,
+            tabId: globalJob.tabId
+        });
+        return true;
+    }
 
-	if (message.type === "jobCompleted") {
-		if (senderTabId) {
-			setJobState(senderTabId, 2);
-			broadcastState(senderTabId, 2);
-			console.log(`Job completed in tab ${senderTabId}`);
-		}
-		return;
-	}
+    if (message.type === "setJobState") {
 
-	if (message.type === "jobFailed") {
-		const tabId = message.tabId ?? senderTabId;
-		if (tabId) {
-			setJobState(tabId, -1);
-			broadcastState(tabId, -1, message.error);
-			console.log(`Job failed in tab ${tabId}: ${message.error}`);
-		}
-		return;
-	}
+        if (message.jobState === 1) {
+
+            if (globalJob.running) {
+                sendResponse({
+                    ok: false,
+                    reason: "another_job_running",
+                    tabId: globalJob.tabId
+                });
+                return true;
+            }
+
+            globalJob.running = true;
+            globalJob.tabId = message.tabId;
+
+            chrome.runtime.sendMessage({
+                type: "stateUpdated",
+                jobState: 1,
+                tabId: message.tabId
+            });
+
+            sendResponse({ ok: true });
+            return true;
+        }
+
+        // Job zakończony / nieudany / reset
+        if (message.jobState === 0 || message.jobState === 2 || message.jobState === -1) {
+            globalJob.running = false;
+            globalJob.tabId = null;
+
+            chrome.runtime.sendMessage({
+                type: "stateUpdated",
+                jobState: message.jobState,
+                tabId: message.tabId
+            });
+
+            sendResponse({ ok: true });
+            return true;
+        }
+    }
+
+    // --- JOB COMPLETED ---
+    if (message.type === "jobCompleted") {
+        globalJob.running = false;
+        globalJob.tabId = null;
+
+        chrome.runtime.sendMessage({
+            type: "stateUpdated",
+            jobState: 2,
+            tabId: sender.tab.id
+        });
+        return true;
+    }
+
+    // --- JOB FAILED ---
+    if (message.type === "jobFailed") {
+        globalJob.running = false;
+        globalJob.tabId = null;
+
+        chrome.runtime.sendMessage({
+            type: "stateUpdated",
+            jobState: -1,
+            tabId: sender.tab.id,
+            error: message.error
+        });
+        return true;
+    }
+
+});
+// zabezpieczenie na wypadek zamknięcia taba z procesem
+chrome.tabs.onRemoved.addListener(tabId => {
+    if (globalJob.running && globalJob.tabId === tabId) {
+        console.log("Job tab closed — clearing global state");
+        globalJob.running = false;
+        globalJob.tabId = null;
+
+        chrome.runtime.sendMessage({
+            type: "stateUpdated",
+            jobState: 0,
+            tabId
+        });
+    }
+});
+//zabezpieczenie na wypadek przeładowania taba z procesem
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+    if (!globalJob.running) return;
+    if (globalJob.tabId === tabId && changeInfo.url) {
+        console.log("Job tab navigated to new URL — clearing global state");
+        globalJob.running = false;
+        globalJob.tabId = null;
+
+        chrome.runtime.sendMessage({
+            type: "stateUpdated",
+            jobState: 0,
+            tabId
+        });
+        return;
+    }
+    if (globalJob.tabId === tabId && changeInfo.status === "loading") {
+        console.log("Job tab reloaded — clearing global state");
+        globalJob.running = false;
+        globalJob.tabId = null;
+
+        chrome.runtime.sendMessage({
+            type: "stateUpdated",
+            jobState: 0,
+            tabId
+        });
+    }
 });
