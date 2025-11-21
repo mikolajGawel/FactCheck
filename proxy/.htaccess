@@ -1,0 +1,9 @@
+# Enable rewriting engine
+RewriteEngine On
+
+# Serve existing files or directories as usual
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# Send everything else to proxy.php, keeping the original path and query
+RewriteRule ^(.*)$ proxy.php [QSA,L]

@@ -26,7 +26,10 @@ export async function runJob(options: RunJobOptions = {}): Promise<void> {
 
 	const start = await fetch(`${serverAddress}/start`, {
 		method: "POST",
-		headers: { "Content-Type": "application/json" },
+		headers: {
+			"Content-Type": "application/json",
+			Authorization: "Basic " + btoa(`${process.env.SERVER_USER}:${process.env.SERVER_PASS}`)
+		},
 		body: JSON.stringify({ content: pageContent, title, url, language })
 	});
 
@@ -42,7 +45,9 @@ export async function runJob(options: RunJobOptions = {}): Promise<void> {
 	let done = false;
 	let jobError = null;
 	while (!done) {
-		const statusRes = await fetch(`${serverAddress}/status?id=${job_id}`);
+		const statusRes = await fetch(`${serverAddress}/status?id=${job_id}`, {
+			headers: { Authorization: "Basic " + btoa(`${process.env.SERVER_USER}:${process.env.SERVER_PASS}`) }
+		});
 		if (!statusRes.ok) {
 			jobError = `Status check failed with status ${statusRes.status}.`;
 			done = true;
