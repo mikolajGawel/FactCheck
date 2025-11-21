@@ -1,19 +1,54 @@
 import type { HighlightSpan } from "../../types/highlightTypes";
 
 let tooltip: HTMLDivElement | null = null;
+let tooltipStyleEl: HTMLStyleElement | null = null;
+const TOOLTIP_CSS_FALLBACK = `
+.fc-tooltip {
+  position: fixed;
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.85);
+  color: #fff;
+  border-radius: 6px;
+  font-size: 13px;
+  pointer-events: none;
+  z-index: 999999;
+  display: none;
+  max-width: calc(100vw - 30px);
+  word-wrap: break-word;
+  line-height: 1.3;
+  box-sizing: border-box;
+}
+
+.fc-tooltip--visible {
+  display: block;
+}
+
+/* small offset helper in case of very small screens */
+.fc-tooltip--right-edge {
+  right: 10px !important;
+  left: auto !important;
+}
+
+
+.fc-tooltip h5 {
+    font-size: 1rem;
+}
+
+.fc-tooltip p {
+    max-width: 45ch;
+    color: rgba(255, 255, 255, 0.8);
+}`;
 
 export function ensureTooltip(): void {
 	if (tooltip) return;
+
+	tooltipStyleEl = document.createElement("style");
+	tooltipStyleEl.setAttribute("data-factcheck", "tooltip-styles");
+	tooltipStyleEl.textContent = TOOLTIP_CSS_FALLBACK;
+	document.body.appendChild(tooltipStyleEl);
+
 	tooltip = document.createElement("div");
-	tooltip.style.position = "fixed";
-	tooltip.style.padding = "8px 12px";
-	tooltip.style.background = "rgba(0,0,0,0.85)";
-	tooltip.style.color = "white";
-	tooltip.style.borderRadius = "6px";
-	tooltip.style.fontSize = "13px";
-	tooltip.style.pointerEvents = "none";
-	tooltip.style.zIndex = "999999";
-	tooltip.style.display = "none";
+	tooltip.className = "fc-tooltip";
 	document.body.appendChild(tooltip);
 }
 
@@ -22,18 +57,26 @@ function showTooltipForNode(node: HTMLElement, html: string): void {
 	if (!tooltip) return;
 
 	tooltip.innerHTML = html;
-	tooltip.style.display = "block";
+	// make visible so offsetWidth/offsetHeight are correct for positioning
+	tooltip.classList.add("fc-tooltip--visible");
+	tooltip.classList.remove("fc-tooltip--right-edge");
 
 	const rect = node.getBoundingClientRect();
 
 	let x = rect.left;
-	let y = rect.bottom + 6; 
+	let y = rect.bottom + 6;
 
-	if (x + tooltip.offsetWidth > window.innerWidth) {
-		x = window.innerWidth - tooltip.offsetWidth - 10;
+	// ensure width measurement is up-to-date
+	const tw = tooltip.offsetWidth;
+	const th = tooltip.offsetHeight;
+
+	if (x + tw > window.innerWidth) {
+		x = window.innerWidth - tw - 10;
+		// small helper class to enforce right edge when necessary
+		tooltip.classList.add("fc-tooltip--right-edge");
 	}
-	if (y + tooltip.offsetHeight > window.innerHeight) {
-		y = rect.top - tooltip.offsetHeight - 6;
+	if (y + th > window.innerHeight) {
+		y = rect.top - th - 6;
 	}
 
 	tooltip.style.left = `${x}px`;
@@ -42,7 +85,8 @@ function showTooltipForNode(node: HTMLElement, html: string): void {
 
 export function hideTooltip(): void {
 	if (tooltip) {
-		tooltip.style.display = "none";
+		tooltip.classList.remove("fc-tooltip--visible");
+		tooltip.classList.remove("fc-tooltip--right-edge");
 	}
 }
 
@@ -50,10 +94,26 @@ function buildTooltipHtml(span: HighlightSpan): string {
 	const type = escapeHtml(span.type ?? "unknown");
 	const confidence = typeof span.confidence === "number" ? `${Math.round(span.confidence * 100)}%` : "n/a";
 	const rationale = escapeHtml(span.rationale ?? "No rationale provided.");
+
+	let typeInPolish = type;
+	switch (type.toLowerCase()) {
+		case "fact":
+			typeInPolish = "Fakt";
+			break;
+		case "opinion":
+			typeInPolish = "Opina";
+			break;
+		case "uncertain":
+			typeInPolish = "Niepewne / Mieszane";
+			break;
+		default:
+			typeInPolish = type;
+	}
+
 	return `
-		<div><strong>Type:</strong> ${type}</div>
-		<div><strong>Confidence:</strong> ${confidence}</div>
-		<div><strong>Rationale:</strong> ${rationale}</div>
+        <h5>${typeInPolish}</h5>
+		<p>${rationale}</p>
+		<p><em>Pewność:</em> ${confidence}</p>
 	`;
 }
 
