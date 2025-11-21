@@ -12,10 +12,10 @@ na konkurs.
 ## Kompilacja programu
 ### Kompilacja wtyczki
 W celu konfiguracji wtyczki należy utworzyć plik `.env` w katalogu `extension` i wypełnić go następującymi wartościami:
-```
-SERVER=<span style="color: green">adress serwera np: http://localhost:3000</span>
-SERVER_USER=<span style="color: green">nazwa użytkownika na serwerze</span>
-SERVER_PASS=<span style="color: green">hasło użytkownika na serwerze</span>
+```bash
+SERVER=http://localhost:3000  #adress serwera
+SERVER_USER=twoja_nazwa #nazwa użytkownika na serwerze
+SERVER_PASS=twoje_hasło #hasło
 ```
 w katalogu `extension` należy najpierw pobrać pakiety używając \
 `npm install` \
@@ -26,18 +26,18 @@ następnie w celu kompilacji wtyczki należy użyć komendy \
 > W celu działania własnego serwera wymagane jest posiadanie własnego tokenu openrouter
 
 W celu konfiguracji serwera należy utworzyć plik `.env` w katalogu `extension` i wypełnić go podanymi zmiennymi:
-```
-OPENROUTER_API_KEY= # <span style="color: green">klucz open routera</span>
-PORT= # <span style="color: green">port na którym serwer ma być hostowany</span>
+```bash
+OPENROUTER_API_KEY=twój_klucz  #klucz API OpenRouter
+PORT=3000    #Port serwera (np. 3000)
 
-OPENROUTER_MODEL= # <span style="color: green">model chata np: x-ai/grok-4.1-fast</span>
-OPENROUTER_BASE_URL= # <span style="color: green">adress openrouter: https://openrouter.ai/api/v1</span>
-OPENROUTER_SITE_URL= # <span style="color: green">address serwera: http://localhost:3000</span>
-OPENROUTER_APP_NAME= # <span style="color: green">nazwa aplikacji</span>
+OPENROUTER_MODEL=x-ai/grok-4.1-fast #Model (np. x-ai/grok-4.1-fast, openai/gpt-4o itp.)
+OPENROUTER_BASE_URL=https://openrouter.ai/api/v1   # Adres API OpenRouter
+OPENROUTER_SITE_URL=http://localhost:3000 # Adres Twojego serwera
+OPENROUTER_APP_NAME=Wtyczka # Nazwa aplikacji
 
-ANALYZER_MAX_SENTENCES=200 # <span style="color: green">maksymalna liczba zdań w artykule</span>
-ANALYZER_TEMPERATURE=0.1
-ANALYZER_CACHE_TTL_MS=600000
+ANALYZER_MAX_SENTENCES=200 # maksymalna liczba zdań w artykule
+ANALYZER_TEMPERATURE=0.1 # poziom stabilności modelu
+ANALYZER_CACHE_TTL_MS=600000 #długość przechowywania modelu w cache-u 
 ```
 przed uruchomieniem serwera wymaga jest instalacja pakietów node.js w tym celu używamy komendy \
 `npm install` \
