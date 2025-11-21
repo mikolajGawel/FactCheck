@@ -15,6 +15,10 @@ COPY src ./src
 RUN npm run build \
     && npm prune --omit=dev
 
+# Ensure logs directory exists and is writable
+RUN mkdir -p /usr/src/app/logs \
+    && chown -R node:node /usr/src/app/logs || true
+
 ENV NODE_ENV=production
 ENV PORT=3000
 

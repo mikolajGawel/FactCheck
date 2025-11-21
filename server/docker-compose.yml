@@ -10,5 +10,7 @@ services:
       PORT: ${PORT}
     ports:
       - "${HOST_PORT}:3000"
+    volumes:
+      - ./logs:/usr/src/app/logs:rw
     restart: unless-stopped
   # (proxy removed - exposing only HTTP on the host)
