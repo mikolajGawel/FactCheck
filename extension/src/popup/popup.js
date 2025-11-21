@@ -78,7 +78,7 @@ function renderArticles(list) {
 }
 
 function selectArticle(id, node) {
-	if (jobState === 1) return; // w trakcie pracy
+	if (jobState === 1) return; 
 	selectedId = id;
 	Array.from(articlesContainer.querySelectorAll(".article-item")).forEach(el => el.classList.remove("selected"));
 	node.classList.add("selected");
@@ -248,7 +248,6 @@ async function fetchAndApplyState() {
     const tab = await queryActiveTab();
     if (!tab || !tab.id) return;
 
-    // --- pobieramy globalny stan joba ---
     const globalJob = await new Promise(resolve => {
         chrome.runtime.sendMessage({ type: "getGlobalJobState" }, res => resolve(res));
     });

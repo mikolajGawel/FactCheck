@@ -9,7 +9,7 @@ import utils from "util";
 const DEFAULT_MODEL = process.env.OPENROUTER_MODEL;
 
 const configuredSentenceLimit = Number(process.env.ANALYZER_MAX_SENTENCES);
-const MAX_SENTENCES = Number.isNaN(configuredSentenceLimit) ? 120 : Math.max(1, configuredSentenceLimit);
+const MAX_SENTENCES = Number.isNaN(configuredSentenceLimit) ? 200 : Math.max(1, configuredSentenceLimit);
 
 const configuredTemperature = Number(process.env.ANALYZER_TEMPERATURE);
 const TEMPERATURE = Number.isNaN(configuredTemperature) ? 0.1 : configuredTemperature;
