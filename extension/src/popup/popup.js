@@ -5,7 +5,9 @@ const titleText = document.getElementById("popupTitle");
 let selectedId = null;
 let articles = [];
 let jobState = 0; // 0: idle, 1: progress, 2: completed, -1: error
-
+let _progressInterval = null;
+let _progressStart = 0;
+let _progressDuration = 0;
 
 function escapeHtml(s) {
 	return (s || "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -45,6 +47,7 @@ async function getJobState() {
    UI RENDERING
 ----------------------------- */
 function renderArticles(list) {
+	stopProgressAnimation(false, true);
 	articlesContainer.innerHTML = "";
 	if (!list.length) {
 		articlesContainer.innerHTML = '<div class="loading">No &lt;article&gt; elements found.</div>';
@@ -78,26 +81,139 @@ function renderArticles(list) {
 }
 
 function selectArticle(id, node) {
-	if (jobState === 1) return; 
+	if (jobState === 1) return;
 	selectedId = id;
 	Array.from(articlesContainer.querySelectorAll(".article-item")).forEach(el => el.classList.remove("selected"));
 	node.classList.add("selected");
 	startBtn.disabled = false;
 }
 
-function renderInProgress() {
-	articlesContainer.innerHTML = '<div class="state"><img src="inprogress.gif"></div>';
+const progressState = {
+	mode: "idle", // idle | determinate | indeterminate
+	estimateSeconds: null,
+	startedAt: 0
+};
+
+function resetProgressState() {
+	progressState.mode = "idle";
+	progressState.estimateSeconds = null;
+	progressState.startedAt = 0;
+}
+
+function renderInProgress({ forceIndeterminate = false } = {}) {
+	const shouldShowDeterminate = !forceIndeterminate && progressState.mode === "determinate" && progressState.startedAt;
+	if (shouldShowDeterminate) {
+		articlesContainer.innerHTML = `
+			<div class="state">
+				<img src="inprogress.gif">
+				<div class="progress-wrap"><div class="progress-bar"></div></div>
+				<div class="estimate">Przewidywany czas: <span class="estimate-time">${formatTimeSeconds(
+					progressState.estimateSeconds
+				)}</span></div>
+			</div>`;
+		startBtn.style.display = "none";
+		titleText.textContent = "Analiza w toku";
+		startProgressAnimation(progressState.estimateSeconds, progressState.startedAt);
+		return;
+	}
+
+	progressState.mode = "indeterminate";
+	articlesContainer.innerHTML = `
+		<div class="state">
+			<img src="inprogress.gif">
+			<div class="progress-wrap progress-indeterminate"><div class="progress-bar"></div></div>
+			<div class="estimate">Oczekiwanie…</div>
+		</div>`;
 	startBtn.style.display = "none";
 	titleText.textContent = "Analiza w toku";
 }
 
+function formatTimeSeconds(sec) {
+	if (!Number.isFinite(sec) || sec <= 0) return "0s";
+	if (sec < 60) return `${Math.round(sec)}s`;
+	const m = Math.floor(sec / 60);
+	const s = Math.round(sec % 60);
+	return `${m}m ${s}s`;
+}
+
+function computeEstimateSecondsFromArticle(article) {
+	// Use snippet length as a proxy. Come up with an estimate ourselves.
+	const snippet = (article?.snippet || "").trim();
+	const words = snippet ? snippet.split(/\s+/).filter(Boolean).length : 40;
+	// heuristic: base 6s + 0.6s per word (short snippet -> shorter), clamp
+	const est = Math.max(6, Math.round(6 + words * 0.6));
+	return est;
+}
+
+function startProgressAnimation(totalSeconds, startedAt = Date.now()) {
+	stopProgressAnimation();
+	_progressDuration = Math.max(1, totalSeconds);
+	_progressStart = startedAt;
+	const bar = articlesContainer.querySelector(".progress-bar");
+	const estimateLabel = articlesContainer.querySelector(".estimate");
+	if (estimateLabel)
+		estimateLabel.innerHTML = `Przewidywany czas: <span class="estimate-time">${formatTimeSeconds(
+			_progressDuration
+		)}</span>`;
+
+	function tick() {
+		const elapsed = (Date.now() - _progressStart) / 1000;
+		const pct = Math.min(100, Math.round((elapsed / _progressDuration) * 100));
+		if (bar) bar.style.width = pct + "%";
+		if (elapsed >= _progressDuration) {
+			// keep at 99% until we get confirmation
+			if (bar) bar.style.width = "99%";
+			clearInterval(_progressInterval);
+			_progressInterval = null;
+			return;
+		}
+	}
+
+	tick();
+	_progressInterval = setInterval(tick, 250);
+}
+
+function stopProgressAnimation(completed, resetState = false) {
+	if (_progressInterval) {
+		clearInterval(_progressInterval);
+		_progressInterval = null;
+	}
+	const bar = articlesContainer.querySelector(".progress-bar");
+	if (bar && completed) {
+		bar.style.width = "100%";
+		const estimateLabel = articlesContainer.querySelector(".estimate");
+		if (estimateLabel) estimateLabel.textContent = "Zakończono";
+	}
+	if (resetState) {
+		resetProgressState();
+	}
+}
+
+function renderInProgressWithEstimate(article) {
+	const est = computeEstimateSecondsFromArticle(article);
+	progressState.mode = "determinate";
+	progressState.estimateSeconds = est;
+	progressState.startedAt = Date.now();
+	articlesContainer.innerHTML = `
+		<div class="state">
+			<img src="inprogress.gif">
+			<div class="progress-wrap"><div class="progress-bar"></div></div>
+			<div class="estimate">Przewidywany czas: <span class="estimate-time">${formatTimeSeconds(est)}</span></div>
+		</div>`;
+	startBtn.style.display = "none";
+	titleText.textContent = "Analiza w toku";
+	startProgressAnimation(est, progressState.startedAt);
+}
+
 function renderCompleted() {
+	stopProgressAnimation(true, true);
 	articlesContainer.innerHTML = '<div class="state"><img src="completed.png"></div>';
 	startBtn.style.display = "none";
 	titleText.innerHTML = "Analiza zakończona";
 }
 
-function renderOtherPendingProgress(){
+function renderOtherPendingProgress() {
+	stopProgressAnimation(false, true);
 	articlesContainer.innerHTML = '<div class="state"><img src="inprogress.gif"></div>';
 	startBtn.style.display = "none";
 	titleText.innerHTML = `
@@ -106,6 +222,7 @@ function renderOtherPendingProgress(){
 }
 
 function renderError(errorMessage) {
+	stopProgressAnimation(false, true);
 	articlesContainer.innerHTML = '<div class="state"><img src="error.png" style="width:64px"></div>';
 	startBtn.style.display = "none";
 	titleText.innerHTML = `
@@ -172,49 +289,45 @@ async function loadArticles() {
    EVENT LISTENERS
 ----------------------------- */
 startBtn.addEventListener("click", async () => {
-    if (selectedId === null) return;
+	if (selectedId === null) return;
 
-    const tab = await queryActiveTab();
-    if (!tab || !tab.id) return;
+	const tab = await queryActiveTab();
+	if (!tab || !tab.id) return;
 
-    const globalState = await new Promise(resolve => {
-        chrome.runtime.sendMessage({ type: "getGlobalJobState" }, res => resolve(res));
-    });
+	const globalState = await new Promise(resolve => {
+		chrome.runtime.sendMessage({ type: "getGlobalJobState" }, res => resolve(res));
+	});
 
-    if (globalState.running && globalState.tabId !== tab.id) {
-        renderOtherPendingProgress();
-        return;
-    }
+	if (globalState.running && globalState.tabId !== tab.id) {
+		renderOtherPendingProgress();
+		return;
+	}
 
+	const response = await new Promise(resolve => {
+		chrome.runtime.sendMessage(
+			{
+				type: "setJobState",
+				jobState: 1,
+				tabId: tab.id
+			},
+			resolve
+		);
+	});
 
-    const response = await new Promise(resolve => {
-        chrome.runtime.sendMessage({
-            type: "setJobState",
-            jobState: 1,
-            tabId: tab.id
-        }, resolve);
-    });
+	if (!response?.ok && response?.reason === "another_job_running") {
+		renderOtherPendingProgress();
+		return;
+	}
 
-    if (!response?.ok && response?.reason === "another_job_running") {
-       renderOtherPendingProgress();
-        return;
-    }
-
-    renderInProgress();
-
-    const article = articles.find(a => a.id === selectedId);
-
-    chrome.tabs.sendMessage(
-        tab.id,
-        {
-            type: "startJob",
-            articleId: selectedId,
-            title: article?.title ?? null,
-            url: tab.url
-        }
-    );
+	const article = articles.find(a => a.id === selectedId);
+	renderInProgressWithEstimate(article);
+	chrome.tabs.sendMessage(tab.id, {
+		type: "startJob",
+		articleId: selectedId,
+		title: article?.title ?? null,
+		url: tab.url
+	});
 });
-
 
 /* -----------------------------
    RECEIVE STATE UPDATES
@@ -223,7 +336,7 @@ chrome.runtime.onMessage.addListener(async message => {
 	if (message.type !== "stateUpdated") return;
 
 	const tab = await queryActiveTab();
-	if (message.tabId !== tab.id) return; 
+	if (message.tabId !== tab.id) return;
 
 	jobState = message.jobState;
 
@@ -248,46 +361,44 @@ chrome.runtime.onMessage.addListener(async message => {
 ----------------------------- */
 
 async function fetchAndApplyState() {
-    const tab = await queryActiveTab();
-    if (!tab || !tab.id) return;
+	const tab = await queryActiveTab();
+	if (!tab || !tab.id) return;
 
-    const globalJob = await new Promise(resolve => {
-        chrome.runtime.sendMessage({ type: "getGlobalJobState" }, res => resolve(res));
-    });
+	const globalJob = await new Promise(resolve => {
+		chrome.runtime.sendMessage({ type: "getGlobalJobState" }, res => resolve(res));
+	});
 
-    if (globalJob.running && globalJob.tabId === tab.id) {
-        jobState = 1;
-        renderInProgress();
-        return;
-    }
+	if (globalJob.running && globalJob.tabId === tab.id) {
+		jobState = 1;
+		renderInProgress();
+		return;
+	}
 
-    if (globalJob.running && globalJob.tabId !== tab.id) {
-        jobState = 0;
-        startBtn.style.display = "none";
+	if (globalJob.running && globalJob.tabId !== tab.id) {
+		jobState = 0;
+		startBtn.style.display = "none";
 		renderOtherPendingProgress();
-        return;
-    }
+		return;
+	}
 
-    const state = await getJobState();
-    jobState = state;
+	const state = await getJobState();
+	jobState = state;
 
-    switch (jobState) {
-        case 1:
-            renderInProgress();
-            break;
-        case 2:
-            renderCompleted();
-            break;
-        case -1:
-            renderError("Ostatnie zadanie nie powiodło się.");
-            break;
-        default:
-            loadArticles();
-            break;
-    }
+	switch (jobState) {
+		case 1:
+			renderInProgress();
+			break;
+		case 2:
+			renderCompleted();
+			break;
+		case -1:
+			renderError("Ostatnie zadanie nie powiodło się.");
+			break;
+		default:
+			loadArticles();
+			break;
+	}
 }
-
-
 
 document.addEventListener("DOMContentLoaded", fetchAndApplyState);
 window.addEventListener("focus", fetchAndApplyState);
