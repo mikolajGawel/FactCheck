@@ -1,14 +1,29 @@
 # Factcheck 
-Wtyczka do przeglądarki chrome pozwalająca na weryfikacje treści stron z informacjiami. \
-Pozwala stwierdzić czy podany test jest faktem czy opiniom w tym celu wykorzystuje sztuczną inteligencję. \
-Projekt został utworzony przez: \
+Wtyczka do przeglądarki chrome pozwalająca na analizę treści stron z informacjiami. \
+Pozwala stwierdzić czy podany test jest faktem czy opinią w tym celu wykorzystuje sztuczną inteligencję. \
+Naszym celem jest walka z fake newsami oraz dezinformacją, która jest coraz bardziej szerzona przez media. \
+Wtyczka ma być swego rodzajem lupą analityczną która przetwarza dokument aby użytkownik otrzymał nie stronnicze dane. \
+Projekt został utworzony przez:
  - Mikołaja Gaweł-Kucab 
  - Wiktora Golicza 
 
-na konkurs.
+na konkurs Hack Heroes 2025.
+## Działanie wtyczki
+Aby użyć wtyczki należy wejść na dowolny artykuł na stronie z wiadomościami np: https://www.wp.pl/ \
+kliknąć w rozszerzenia kliknąć wtyczkę FactCheck należy wybrać artykuł we wtyczce \
+po czym wcisnąć przycisk rozpocznij analizę, ze wzgledu na użycie modelu AI powinno to zająć około ~30s. w zależności od długości artykułu\
+w przypadku braku artykułu wtyczka będzie wyświetlać komunikat o braku artykułu na danej stronie.\
+Po zakończonej analizie części artykułu zostaną pozaznaczane na 3 kolory: 
+ - czerwony: opinia, specyficzna perspektywa
+ - zielony: fakt, informacja
+ - szary: niepewne, nie zakwalifikowane
+## Demonstracja działania rozszerzenia
+![preview](./preview/preview.gif)
 ## Uruchmienie wtyczki
-
-
+1. Pierwszym krokiem jest pobranie gotowej wersji(rekomendowane) wtyczki albo zkompilowanie własnej z kodu źródłowego
+2. Aby uruchomić wtyczkę należy wejść w kartę rozszerzeń w przeglądarce Google Chrome wpisując w pasek adresu: `chrome://extensions/`
+3. Włącz `Tryb dewelopera` w celu możliwości dodawania niezpakowanych rozszerzeń
+4. Ostatnim krokiem jest użycie opcji `Załaduj rozpakowane` i wybranie folderu w którym rozpakowałeś wtyczkę albo ją zkompliowaliśmy
 ## Kompilacja programu
 ### Kompilacja wtyczki
 W celu konfiguracji wtyczki należy utworzyć plik `.env` w katalogu `extension` i wypełnić go następującymi wartościami:
@@ -43,4 +58,9 @@ przed uruchomieniem serwera wymaga jest instalacja pakietów node.js w tym celu 
 `npm install` \
 następnie w celu kompilacji serwera musimy użyć \
 `npm run build` aby uruchomić serwer należy użyć komendy `npm run start` \
-w celach debugowania zamiast dwóch powyższych komend można użyć też `npm run dev` które posiada odświeżanie po edycji
+w celach debugowania zamiast dwóch powyższych komend można użyć też `npm run dev` które posiada odświeżanie po edycji kodu
+## Użyte technologie
+
+[![Node.js](https://img.shields.io/badge/Node.js-≥24.11.1-339933?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/) 
+[![OpenRouter](https://img.shields.io/badge/OpenRouter-API-000000?style=flat-square&logo=openai&logoColor=white)](https://openrouter.ai/)
