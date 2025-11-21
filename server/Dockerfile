@@ -8,6 +8,7 @@ COPY tsconfig.json ./
 COPY .env.defaults ./
 
 RUN npm ci
+RUN npm i typescript
 
 COPY src ./src
 

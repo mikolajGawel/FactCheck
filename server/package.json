@@ -5,7 +5,7 @@
     "type": "module",
     "scripts": {
         "build:shared": "tsc -p ../shared/tsconfig.json",
-        "build": "tsc",
+        "build": "npx tsc",
         "dev": "node dev/dev-watcher.ts",
         "clean": "node -e \"require('fs').rmSync('dist', { recursive: true, force: true })\"",
         "start": "node dist/server.js",
