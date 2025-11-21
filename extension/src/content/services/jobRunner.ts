@@ -17,6 +17,13 @@ export interface RunJobOptions {
 	context?: HighlightContext;
 }
 
+function getAuthHeaders(): Record<string, string> | undefined {
+	if (serverAddress.startsWith("https://")) {
+		return { Authorization: "Basic " + btoa(`${process.env.SERVER_USER}:${process.env.SERVER_PASS}`) };
+	}
+	return undefined;
+}
+
 export async function runJob(options: RunJobOptions = {}): Promise<void> {
 	const resolvedContext = options.context ?? buildDocumentContext();
 	const pageContent = typeof options.text === "string" ? options.text : resolvedContext.html;
@@ -28,7 +35,7 @@ export async function runJob(options: RunJobOptions = {}): Promise<void> {
 		method: "POST",
 		headers: {
 			"Content-Type": "application/json",
-			Authorization: "Basic " + btoa(`${process.env.SERVER_USER}:${process.env.SERVER_PASS}`)
+			...getAuthHeaders()
 		},
 		body: JSON.stringify({ content: pageContent, title, url, language })
 	});
@@ -46,7 +53,7 @@ export async function runJob(options: RunJobOptions = {}): Promise<void> {
 	let jobError = null;
 	while (!done) {
 		const statusRes = await fetch(`${serverAddress}/status?id=${job_id}`, {
-			headers: { Authorization: "Basic " + btoa(`${process.env.SERVER_USER}:${process.env.SERVER_PASS}`) }
+			headers: { ...getAuthHeaders() }
 		});
 		if (!statusRes.ok) {
 			jobError = `Status check failed with status ${statusRes.status}.`;
@@ -70,7 +77,6 @@ export async function runJob(options: RunJobOptions = {}): Promise<void> {
 	}
 
 	if (jobError) {
-		// Jeśli wystąpił błąd w pętli, powiadom background.js
 		chrome.runtime.sendMessage({ type: "jobFailed", error: jobError });
 	}
 }
