@@ -1,14 +1,14 @@
 {
   "name": "extension",
   "version": "1.0.0",
-  "description": "This is a Chrome extension that sends page content to a local server for processing.",
-  "main": "background.js",
+  "description": "This is a Chrome extension that sends page content to server for analyzing documents using ai.",
+  "main": "background.js", 
   "scripts": {
     "build": "webpack --config webpack.config.js",
     "dev": "webpack --config webpack.config.js --mode development --watch"
   },
   "keywords": [],
-  "author": "",
+  "author": "Mikołaj Gaweł-Kucab & Wiktor Golicz",
   "license": "ISC",
   "type": "module",
   "devDependencies": {

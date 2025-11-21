@@ -24,9 +24,7 @@ export default (env, argv) => {
 		},
 		resolve: {
 			extensions: [".ts", ".js"],
-			alias: {
-				"#shared": path.resolve(__dirname, "../shared/src")
-			}
+			alias: {}
 		},
 		module: {
 			rules: [

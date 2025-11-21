@@ -1,5 +1,5 @@
 import * as cheerio from "cheerio";
-import { normalizeText, DEFAULT_NOISE_SELECTORS } from "../../../shared/dist/textProcessing.js";
+import { normalizeText, DEFAULT_NOISE_SELECTORS } from "./textProcessing.js";
 
 // --- Konfiguracja ---
 

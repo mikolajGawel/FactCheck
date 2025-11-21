@@ -1,7 +1,7 @@
 import { createTextSnapshot } from "./textSnapshot";
 import { HIGHLIGHT_IGNORE_SELECTOR } from "./constants";
 import { getArticleNodes, findArticleTitle } from "./articleDetection";
-import { normalizeText } from "../../../shared/src/textProcessing";
+import { normalizeText } from "./textProcessing";
 import { HighlightContext, HighlightSource } from "../types/highlightTypes";
 
 export function collectArticleText(articleId: number): string {
