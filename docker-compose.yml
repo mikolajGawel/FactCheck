@@ -1,0 +1,22 @@
+services:
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    env_file:
+      - ./.env
+    environment:
+      NODE_ENV: production
+      PORT: ${PORT:-3000}
+    ports:
+      - "${HOST_PORT:-3000}:3000"
+    volumes:
+      - ./server/logs:/app/logs:rw
+    restart: unless-stopped
+
+  dashboard:
+    build: ./dashboard
+    ports:
+      - "5173:80"
+    depends_on:
+      - server

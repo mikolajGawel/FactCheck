@@ -15,7 +15,7 @@ function ensureLogDir() {
 	}
 }
 
-export async function logAICall(generationId: string) {
+export async function logAICall(generationId: string, metadata?: { url?: string; article_title?: string }) {
 	try {
 		ensureLogDir();
 		console.log("Logging AI call with generation ID:", generationId);
@@ -31,6 +31,11 @@ export async function logAICall(generationId: string) {
 		}
 
 		const payload = await response.json();
+		// Merge metadata into the payload data if it exists
+		if (metadata) {
+			payload.data = { ...payload.data, ...metadata };
+		}
+		
 		const line = JSON.stringify(payload);
 		await fs.promises.appendFile(logFile, line + "\n", { encoding: "utf8" });
 	} catch (err) {
