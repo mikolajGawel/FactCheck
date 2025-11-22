@@ -3,6 +3,8 @@ import mainRouter from "./routers/mainRouter.js";
 import cors from "cors";
 import devRouter from "./routers/devRouter.js";
 
+import logsRouter from "./routers/logsRouter.js";
+
 const app = express();
 
 app.use(
@@ -23,6 +25,7 @@ app.use((req, res, next) => {
 });
 
 app.use(express.json());
+app.use("/api/logs", logsRouter);
 app.use("/", mainRouter);
 
 // Development-only endpoints to allow an external watcher to request a restart.

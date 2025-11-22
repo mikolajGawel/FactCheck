@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  server:
+    build: ./server
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./server/logs:/app/logs
+      - ./server/.env:/app/.env
+    environment:
+      - NODE_ENV=production
+
+  dashboard:
+    build: ./dashboard
+    ports:
+      - "5173:80"
+    depends_on:
+      - server
