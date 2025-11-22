@@ -33,6 +33,9 @@ const formatDuration = (ms: number) => {
 
 export default function Charts({ logs }: Props) {
   const [showNonReasoning, setShowNonReasoning] = React.useState(true);
+  const [normalizeCost, setNormalizeCost] = React.useState(false);
+  const [normalizeSpeed, setNormalizeSpeed] = React.useState(false);
+  const [normalizeScatterCost, setNormalizeScatterCost] = React.useState(false);
 
   // Aggregate data for charts
   const modelStats = logs.reduce((acc, log) => {
@@ -81,6 +84,18 @@ export default function Charts({ logs }: Props) {
       ? stats.tpsSamples.reduce((a, b) => a + b, 0) / stats.tpsSamples.length 
       : 0;
     
+    const avgInputTokens = stats.totalInputTokens / stats.count;
+    const avgCost = stats.totalCost / stats.count;
+    const avgLatency = stats.totalLatency / stats.count;
+    const avgGenTime = stats.totalGenTime / stats.count;
+
+    const avgCostPer1kInput = avgInputTokens > 0 ? (avgCost / avgInputTokens) * 1000 : 0;
+    
+    // Normalize speed (time) per 1k input tokens
+    // Time / (InputTokens / 1000)
+    const avgLatencyPer1kInput = avgInputTokens > 0 ? avgLatency / (avgInputTokens / 1000) : 0;
+    const avgGenTimePer1kInput = avgInputTokens > 0 ? avgGenTime / (avgInputTokens / 1000) : 0;
+
     const outputPer1kInput = stats.totalInputTokens > 0 
       ? (stats.totalTokens / stats.totalInputTokens) * 1000 
       : 0;
@@ -96,10 +111,14 @@ export default function Charts({ logs }: Props) {
       name: shortenModelName(name),
       fullName: name,
       cost: stats.totalCost,
-      avgLatency: stats.totalLatency / stats.count,
-      avgGenTime: stats.totalGenTime / stats.count,
+      avgCost,
+      avgCostPer1kInput,
+      avgLatency,
+      avgGenTime,
+      avgTotalTime: avgLatency + avgGenTime,
+      avgLatencyPer1kInput,
+      avgGenTimePer1kInput,
       avgTps: avgTps,
-      avgCost: stats.totalCost / stats.count,
       outputInputRatio: stats.totalInputTokens > 0 ? stats.totalTokens / stats.totalInputTokens : 0,
       reasoningPer1kInput,
       nonReasoningPer1kInput
@@ -132,22 +151,33 @@ export default function Charts({ logs }: Props) {
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(600px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
       
-      {/* Cost by Model */}
+      {/* Average Cost by Model */}
       <div style={{ backgroundColor: 'var(--bg-card)', padding: '1.5rem', borderRadius: '0.75rem', border: '1px solid var(--border-color)' }}>
-        <h3 style={{ marginBottom: '1.5rem', color: 'var(--text-primary)' }}>Total Cost by Model</h3>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+          <h3 style={{ color: 'var(--text-primary)', margin: 0 }}>Average Cost by Model</h3>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', color: 'var(--text-secondary)', cursor: 'pointer' }}>
+            <input 
+              type="checkbox" 
+              checked={normalizeCost} 
+              onChange={(e) => setNormalizeCost(e.target.checked)}
+              style={{ accentColor: 'var(--accent-primary)' }}
+            />
+            Per 1k Input Tokens
+          </label>
+        </div>
         <div style={{ height: '300px' }}>
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" vertical={false} />
               <XAxis dataKey="name" tick={false} height={10} />
-              <YAxis stroke="var(--text-secondary)" fontSize={12} tick={{fill: 'var(--text-secondary)'}} tickFormatter={(value) => `$${value.toFixed(3)}`} />
+              <YAxis stroke="var(--text-secondary)" fontSize={12} tick={{fill: 'var(--text-secondary)'}} tickFormatter={(value) => `$${value.toFixed(4)}`} />
               <Tooltip 
                 contentStyle={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
                 itemStyle={{ color: 'var(--text-primary)' }}
-                formatter={(value: number) => [`$${value.toFixed(4)}`, 'Cost']}
+                formatter={(value: number) => [`$${value.toFixed(6)}`, normalizeCost ? 'Cost / 1k Input' : 'Avg Cost']}
               />
               <Legend content={renderLegend} />
-              <Bar dataKey="cost" name="Total Cost">
+              <Bar dataKey={normalizeCost ? "avgCostPer1kInput" : "avgCost"} name={normalizeCost ? "Cost / 1k Input" : "Avg Cost"}>
                 {chartData.map((_entry, index) => (
                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                 ))}
@@ -184,7 +214,18 @@ export default function Charts({ logs }: Props) {
 
       {/* Speed Breakdown */}
       <div style={{ backgroundColor: 'var(--bg-card)', padding: '1.5rem', borderRadius: '0.75rem', border: '1px solid var(--border-color)' }}>
-        <h3 style={{ marginBottom: '1.5rem', color: 'var(--text-primary)' }}>Speed Breakdown (Latency + Generation)</h3>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+          <h3 style={{ color: 'var(--text-primary)', margin: 0 }}>Speed Breakdown</h3>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', color: 'var(--text-secondary)', cursor: 'pointer' }}>
+            <input 
+              type="checkbox" 
+              checked={normalizeSpeed} 
+              onChange={(e) => setNormalizeSpeed(e.target.checked)}
+              style={{ accentColor: 'var(--accent-primary)' }}
+            />
+            Per 1k Input Tokens
+          </label>
+        </div>
         <div style={{ height: '300px' }}>
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={chartData}>
@@ -197,12 +238,12 @@ export default function Charts({ logs }: Props) {
                 formatter={(value: number) => formatDuration(value)}
               />
               <Legend content={renderLegend} />
-              <Bar dataKey="avgLatency" stackId="a" name="Avg Latency">
+              <Bar dataKey={normalizeSpeed ? "avgLatencyPer1kInput" : "avgLatency"} stackId="a" name={normalizeSpeed ? "Latency / 1k Input" : "Avg Latency"}>
                 {chartData.map((_entry, index) => (
                   <Cell key={`cell-lat-${index}`} fill={COLORS[index % COLORS.length]} opacity={0.5} />
                 ))}
               </Bar>
-              <Bar dataKey="avgGenTime" stackId="a" name="Avg Gen Time">
+              <Bar dataKey={normalizeSpeed ? "avgGenTimePer1kInput" : "avgGenTime"} stackId="a" name={normalizeSpeed ? "Gen Time / 1k Input" : "Avg Gen Time"}>
                 {chartData.map((_entry, index) => (
                   <Cell key={`cell-gen-${index}`} fill={COLORS[index % COLORS.length]} />
                 ))}
@@ -255,14 +296,33 @@ export default function Charts({ logs }: Props) {
         </div>
       </div>
 
-      {/* Speed vs Cost Scatter */}
+      {/* TPS vs Cost Efficiency */}
       <div style={{ backgroundColor: 'var(--bg-card)', padding: '1.5rem', borderRadius: '0.75rem', border: '1px solid var(--border-color)' }}>
-        <h3 style={{ marginBottom: '1.5rem', color: 'var(--text-primary)' }}>Speed vs Cost Efficiency</h3>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+          <h3 style={{ color: 'var(--text-primary)', margin: 0 }}>TPS vs Cost Efficiency</h3>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', color: 'var(--text-secondary)', cursor: 'pointer' }}>
+            <input 
+              type="checkbox" 
+              checked={normalizeScatterCost} 
+              onChange={(e) => setNormalizeScatterCost(e.target.checked)}
+              style={{ accentColor: 'var(--accent-primary)' }}
+            />
+            Cost per 1k Input
+          </label>
+        </div>
         <div style={{ height: '300px' }}>
           <ResponsiveContainer width="100%" height="100%">
             <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 40 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
-              <XAxis type="number" dataKey="avgCost" name="Avg Cost" unit="$" stroke="var(--text-secondary)" tick={{fill: 'var(--text-secondary)'}} tickFormatter={(val) => val.toFixed(4)} />
+              <XAxis 
+                type="number" 
+                dataKey={normalizeScatterCost ? "avgCostPer1kInput" : "avgCost"} 
+                name={normalizeScatterCost ? "Cost / 1k Input" : "Avg Cost"} 
+                unit="$" 
+                stroke="var(--text-secondary)" 
+                tick={{fill: 'var(--text-secondary)'}} 
+                tickFormatter={(val) => val.toFixed(normalizeScatterCost ? 6 : 4)} 
+              />
               <YAxis type="number" dataKey="avgTps" name="Speed" unit=" TPS" stroke="var(--text-secondary)" tick={{fill: 'var(--text-secondary)'}} width={80} />
               <ZAxis type="number" dataKey="outputInputRatio" range={[50, 400]} name="Output/Input Ratio" />
               <Tooltip 
@@ -273,8 +333,74 @@ export default function Charts({ logs }: Props) {
                     return (
                       <div style={{ backgroundColor: 'var(--bg-secondary)', padding: '0.5rem', border: '1px solid var(--border-color)', borderRadius: '0.25rem' }}>
                         <p style={{ fontWeight: 'bold', marginBottom: '0.25rem' }}>{data.fullName}</p>
-                        <p>Cost: ${data.avgCost.toFixed(5)}</p>
+                        <p>Cost: ${normalizeScatterCost ? data.avgCostPer1kInput.toFixed(7) : data.avgCost.toFixed(5)}</p>
                         <p>Speed: {data.avgTps.toFixed(2)} TPS</p>
+                        <p>Out/In Ratio: {data.outputInputRatio.toFixed(2)}</p>
+                      </div>
+                    );
+                  }
+                  return null;
+                }}
+              />
+              <Scatter name="Models" data={chartData} fill="var(--accent-primary)">
+                {chartData.map((_entry, index) => (
+                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                ))}
+              </Scatter>
+              <Legend content={renderLegend} />
+            </ScatterChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* Total Time vs Cost Efficiency */}
+      <div style={{ backgroundColor: 'var(--bg-card)', padding: '1.5rem', borderRadius: '0.75rem', border: '1px solid var(--border-color)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+          <h3 style={{ color: 'var(--text-primary)', margin: 0 }}>Total Time vs Cost Efficiency</h3>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', color: 'var(--text-secondary)', cursor: 'pointer' }}>
+            <input 
+              type="checkbox" 
+              checked={normalizeScatterCost} 
+              onChange={(e) => setNormalizeScatterCost(e.target.checked)}
+              style={{ accentColor: 'var(--accent-primary)' }}
+            />
+            Cost per 1k Input
+          </label>
+        </div>
+        <div style={{ height: '300px' }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 40 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
+              <XAxis 
+                type="number" 
+                dataKey={normalizeScatterCost ? "avgCostPer1kInput" : "avgCost"} 
+                name={normalizeScatterCost ? "Cost / 1k Input" : "Avg Cost"} 
+                unit="$" 
+                stroke="var(--text-secondary)" 
+                tick={{fill: 'var(--text-secondary)'}} 
+                tickFormatter={(val) => val.toFixed(normalizeScatterCost ? 6 : 4)} 
+              />
+              <YAxis 
+                type="number" 
+                dataKey="avgTotalTime" 
+                name="Total Time" 
+                unit="ms" 
+                stroke="var(--text-secondary)" 
+                tick={{fill: 'var(--text-secondary)'}} 
+                tickFormatter={(val) => formatDuration(val)}
+                width={80} 
+              />
+              <ZAxis type="number" dataKey="outputInputRatio" range={[50, 400]} name="Output/Input Ratio" />
+              <Tooltip 
+                cursor={{ strokeDasharray: '3 3' }}
+                content={({ active, payload }) => {
+                  if (active && payload && payload.length) {
+                    const data = payload[0].payload;
+                    return (
+                      <div style={{ backgroundColor: 'var(--bg-secondary)', padding: '0.5rem', border: '1px solid var(--border-color)', borderRadius: '0.25rem' }}>
+                        <p style={{ fontWeight: 'bold', marginBottom: '0.25rem' }}>{data.fullName}</p>
+                        <p>Cost: ${normalizeScatterCost ? data.avgCostPer1kInput.toFixed(7) : data.avgCost.toFixed(5)}</p>
+                        <p>Time: {formatDuration(data.avgTotalTime)}</p>
                         <p>Out/In Ratio: {data.outputInputRatio.toFixed(2)}</p>
                       </div>
                     );
