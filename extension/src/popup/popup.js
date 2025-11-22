@@ -13,6 +13,70 @@ function escapeHtml(s) {
 	return (s || "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
 
+const PROTECTED_ABBREVIATIONS = [
+	"dr", "inż", "mgr", "prof", "hab", "hab\.", "hab\\", "dot", "s", "ul", "al", "ks", "pl", "ppłk", "płk", "gen", "mjr", "por", "ppor", "kpt", "st", "plk", "św", "r","tyś","tys", "mln", "mld","oprac","prok"
+];
+
+function protectDots(text) {
+	let result = text;
+	for (const abbr of PROTECTED_ABBREVIATIONS) {
+		if (abbr === "r") {
+			result = result.replace(/\br\.(?=\s+[A-ZĄĆĘŁŃÓŚŹŻ])/g, "r.");
+			result = result.replace(/\br\.(?=\s+[^A-ZĄĆĘŁŃÓŚŹŻ])/g, "r§");
+			continue;
+		}
+		const re = new RegExp(`\\b${abbr}\\.(?=\\s|$)`, "gi");
+		result = result.replace(re, m => m.slice(0, -1) + "§");
+	}
+	result = result.replace(/(\d)\.(\d)/g, "$1§$2");
+	return result;
+}
+
+function restoreProtectedDots(text) {
+	return text.replace(/§/g, ".");
+}
+
+function countSentences(text) {
+	if (!text || !text.trim()) return 0;
+	const protectedText = protectDots(text);
+
+	if (typeof Intl !== "undefined" && typeof Intl.Segmenter === "function") {
+		try {
+			const seg = new Intl.Segmenter(navigator.language || "en", { granularity: "sentence" });
+			let count = 0;
+			for (const s of seg.segment(protectedText)) {
+				const t = restoreProtectedDots(s.segment.trim());
+				if (t) count += 1;
+			}
+			return count;
+		} catch (e) {
+		}
+	}
+
+	const re = /[^.!?]+[.!?]+|[^.!?]+$/g;
+	let m;
+	let c = 0;
+	while ((m = re.exec(protectedText)) !== null) {
+		const t = restoreProtectedDots(m[0].trim());
+		if (t) c += 1;
+	}
+	return c;
+}
+
+function showLongArticleWarning(count) {
+	clearLongArticleWarning();
+	const warn = document.createElement("div");
+	warn.id = "longArticleWarning";
+	warn.className = "warning";
+	warn.innerHTML = `Artykuł jest za długi i może nie zostać w całości przetworzony.`;
+	const container = document.querySelector(".container");
+	if (container) container.insertBefore(warn, container.querySelector('.controls'));
+}
+
+function clearLongArticleWarning() {
+	const existing = document.getElementById("longArticleWarning");
+	if (existing) existing.remove();
+}
 async function queryActiveTab() {
 	return new Promise(resolve => {
 		chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
@@ -50,7 +114,7 @@ function renderArticles(list) {
 	stopProgressAnimation(false, true);
 	articlesContainer.innerHTML = "";
 	if (!list.length) {
-		articlesContainer.innerHTML = '<div class="loading">No &lt;article&gt; elements found.</div>';
+		articlesContainer.innerHTML = '<div class="loading">Na stronie nie znaleziono elementu z artykułem: &lt;article&gt;.</div>';
 		startBtn.disabled = true;
 		return;
 	}
@@ -80,12 +144,37 @@ function renderArticles(list) {
 	startBtn.disabled = true;
 }
 
-function selectArticle(id, node) {
+async function selectArticle(id, node) {
 	if (jobState === 1) return;
 	selectedId = id;
 	Array.from(articlesContainer.querySelectorAll(".article-item")).forEach(el => el.classList.remove("selected"));
 	node.classList.add("selected");
-	startBtn.disabled = false;
+
+	clearLongArticleWarning();
+
+	const tab = await queryActiveTab();
+	if (!tab || !tab.id) {
+		startBtn.disabled = true;
+		return;
+	}
+
+	chrome.tabs.sendMessage(tab.id, { type: "getArticleText", articleId: id }, response => {
+		if (chrome.runtime.lastError || !response) {
+			startBtn.disabled = true;
+			return;
+		}
+
+		const text = response.articleText || "";
+		const sentenceCount = countSentences(text);
+		const LIMIT = 300;
+		if (sentenceCount > LIMIT) {
+			showLongArticleWarning(sentenceCount);
+			startBtn.disabled = true;
+		} else {
+			clearLongArticleWarning();
+			startBtn.disabled = false;
+		}
+	});
 }
 
 const progressState = {
@@ -137,10 +226,8 @@ function formatTimeSeconds(sec) {
 }
 
 function computeEstimateSecondsFromArticle(article) {
-	// Use snippet length as a proxy. Come up with an estimate ourselves.
 	const snippet = (article?.snippet || "").trim();
 	const words = snippet ? snippet.split(/\s+/).filter(Boolean).length : 40;
-	// heuristic: base 6s + 0.6s per word (short snippet -> shorter), clamp
 	const est = Math.max(6, Math.round(6 + words * 0.6));
 	return est;
 }

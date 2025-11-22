@@ -176,3 +176,12 @@ button[disabled] {
 	font-weight: 600;
 	color: var(--text);
 }
+
+.warning {
+	background: #fff4e5;
+	border: 1px solid #ffd8a8;
+	color: #6a4a00;
+	border-radius: 6px;
+	margin: 8px 0;
+	font-size: 13px;
+}

@@ -31,6 +31,7 @@ W celu konfiguracji wtyczki należy utworzyć plik `.env` w katalogu `extension`
 SERVER=http://localhost:3000  #adress serwera
 SERVER_USER=twoja_nazwa #nazwa użytkownika na serwerze
 SERVER_PASS=twoje_hasło #hasło
+#w przypadku hostowania serwera lokalnie w pola można zostawić z wpisanymi wartościami domyślnymi
 ```
 w katalogu `extension` należy najpierw pobrać pakiety używając \
 `npm install` \
@@ -50,7 +51,7 @@ OPENROUTER_BASE_URL=https://openrouter.ai/api/v1   # Adres API OpenRouter
 OPENROUTER_SITE_URL=http://localhost:3000 # Adres Twojego serwera
 OPENROUTER_APP_NAME=Wtyczka # Nazwa aplikacji
 
-ANALYZER_MAX_SENTENCES=200 # maksymalna liczba zdań w artykule
+ANALYZER_MAX_SENTENCES=300 # maksymalna liczba zdań w artykule
 ANALYZER_TEMPERATURE=0.1 # poziom stabilności modelu
 ANALYZER_CACHE_TTL_MS=600000 #długość przechowywania modelu w cache-u 
 ```

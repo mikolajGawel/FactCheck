@@ -1,7 +1,7 @@
 {
     "name": "FactCheck",
-    "description": "Extension that uses ai to check if some informations are fact or just an opinion. Made by Wiktor Golicz & Mikołaj Gaweł-Kucab",
-    "version": "1.0",
+    "description": "Wtyczka do przeglądarki Chrome do analizowania dokumentów za pomocą AI. Utworzona przez Mikołaja Gaweł-Kucab i Wiktora Golicza.",
+    "version": "0.1",
     "manifest_version": 3,
     "action": {
         "default_icon": "logo.png",
