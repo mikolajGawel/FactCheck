@@ -4,6 +4,7 @@ import {
   LineChart, Line, ScatterChart, Scatter, ZAxis, Legend, Cell 
 } from 'recharts';
 import { format } from 'date-fns';
+import React from 'react';
 
 interface Props {
   logs: LogEntry[];
@@ -31,6 +32,8 @@ const formatDuration = (ms: number) => {
 };
 
 export default function Charts({ logs }: Props) {
+  const [showNonReasoning, setShowNonReasoning] = React.useState(true);
+
   // Aggregate data for charts
   const modelStats = logs.reduce((acc, log) => {
     const model = log.data.model;
@@ -42,6 +45,7 @@ export default function Charts({ logs }: Props) {
         totalGenTime: 0,
         totalTokens: 0,
         totalInputTokens: 0,
+        totalReasoningTokens: 0,
         tpsSamples: []
       };
     }
@@ -53,6 +57,7 @@ export default function Charts({ logs }: Props) {
     stats.totalGenTime += log.data.generation_time || 0;
     stats.totalTokens += log.data.tokens_completion || 0;
     stats.totalInputTokens += log.data.tokens_prompt || 0;
+    stats.totalReasoningTokens += log.data.native_tokens_reasoning || 0;
 
     if (log.data.generation_time > 0) {
       const tps = (log.data.tokens_completion || 0) / (log.data.generation_time / 1000);
@@ -67,6 +72,7 @@ export default function Charts({ logs }: Props) {
     totalGenTime: number; 
     totalTokens: number; 
     totalInputTokens: number;
+    totalReasoningTokens: number;
     tpsSamples: number[];
   }>);
 
@@ -75,6 +81,17 @@ export default function Charts({ logs }: Props) {
       ? stats.tpsSamples.reduce((a, b) => a + b, 0) / stats.tpsSamples.length 
       : 0;
     
+    const outputPer1kInput = stats.totalInputTokens > 0 
+      ? (stats.totalTokens / stats.totalInputTokens) * 1000 
+      : 0;
+    
+    const reasoningPer1kInput = stats.totalInputTokens > 0
+      ? (stats.totalReasoningTokens / stats.totalInputTokens) * 1000
+      : 0;
+      
+    // Ensure non-reasoning doesn't go negative if reasoning > total for some reason (data inconsistency)
+    const nonReasoningPer1kInput = Math.max(0, outputPer1kInput - reasoningPer1kInput);
+
     return {
       name: shortenModelName(name),
       fullName: name,
@@ -83,7 +100,9 @@ export default function Charts({ logs }: Props) {
       avgGenTime: stats.totalGenTime / stats.count,
       avgTps: avgTps,
       avgCost: stats.totalCost / stats.count,
-      outputInputRatio: stats.totalInputTokens > 0 ? stats.totalTokens / stats.totalInputTokens : 0
+      outputInputRatio: stats.totalInputTokens > 0 ? stats.totalTokens / stats.totalInputTokens : 0,
+      reasoningPer1kInput,
+      nonReasoningPer1kInput
     };
   });
 
@@ -186,6 +205,49 @@ export default function Charts({ logs }: Props) {
               <Bar dataKey="avgGenTime" stackId="a" name="Avg Gen Time">
                 {chartData.map((_entry, index) => (
                   <Cell key={`cell-gen-${index}`} fill={COLORS[index % COLORS.length]} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* Output Tokens per 1k Input Tokens */}
+      <div style={{ backgroundColor: 'var(--bg-card)', padding: '1.5rem', borderRadius: '0.75rem', border: '1px solid var(--border-color)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+          <h3 style={{ color: 'var(--text-primary)', margin: 0 }}>Output Tokens per 1k Input Tokens</h3>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', color: 'var(--text-secondary)', cursor: 'pointer' }}>
+            <input 
+              type="checkbox" 
+              checked={showNonReasoning} 
+              onChange={(e) => setShowNonReasoning(e.target.checked)}
+              style={{ accentColor: 'var(--accent-primary)' }}
+            />
+            Show Non-Reasoning
+          </label>
+        </div>
+        <div style={{ height: '300px' }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={chartData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" vertical={false} />
+              <XAxis dataKey="name" tick={false} height={10} />
+              <YAxis stroke="var(--text-secondary)" fontSize={12} tick={{fill: 'var(--text-secondary)'}} />
+              <Tooltip 
+                contentStyle={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
+                itemStyle={{ color: 'var(--text-primary)' }}
+                formatter={(value: number, name: string) => [value.toFixed(0), name]}
+              />
+              <Legend content={renderLegend} />
+              {showNonReasoning && (
+                <Bar dataKey="nonReasoningPer1kInput" stackId="a" name="Non-Reasoning Tokens">
+                  {chartData.map((_entry, index) => (
+                    <Cell key={`cell-nonreasoning-${index}`} fill={COLORS[index % COLORS.length]} opacity={0.3} />
+                  ))}
+                </Bar>
+              )}
+              <Bar dataKey="reasoningPer1kInput" stackId="a" name="Reasoning Tokens">
+                {chartData.map((_entry, index) => (
+                  <Cell key={`cell-reasoning-${index}`} fill={COLORS[index % COLORS.length]} />
                 ))}
               </Bar>
             </BarChart>

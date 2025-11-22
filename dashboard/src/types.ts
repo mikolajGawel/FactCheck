@@ -11,6 +11,7 @@ export interface LogEntry {
     url?: string;
     article_title?: string;
     id: string;
+    native_tokens_reasoning?: number;
   };
 }
 
