@@ -7,6 +7,43 @@ let globalJob = {
 
 // { [tabId]: { url: string, articleIds: Set<number> } }
 let processedArticlesByTab = {};
+// Cached server limit (fetched once by background and stored here)
+let cachedServerLimit = null;
+
+// Server address and auth (injected at build time via process.env)
+const serverAddress = process.env.SERVER ?? "";
+
+function getAuthHeaders() {
+	if (typeof serverAddress === "string" && serverAddress.startsWith("https://")) {
+		try {
+			return { Authorization: "Basic " + btoa(`${process.env.SERVER_USER}:${process.env.SERVER_PASS}`) };
+		} catch (e) {
+			return {};
+		}
+	}
+	return {};
+}
+
+async function fetchAndCacheServerLimit() {
+	if (!serverAddress) return null;
+	try {
+		const res = await fetch(`${serverAddress}/limit`, { method: "GET", headers: { ...(getAuthHeaders() ?? {}) } });
+		if (!res.ok) return null;
+		const data = await res.json().catch(() => ({}));
+		const parsed = Number(data?.max_sentences);
+		if (!Number.isNaN(parsed) && parsed > 0) {
+			cachedServerLimit = parsed;
+			return parsed;
+		}
+	} catch (e) {
+		console.warn("background: failed to fetch server limit", e);
+	}
+	return null;
+}
+
+// Fetch limit at startup (fire-and-forget)
+fetchAndCacheServerLimit().catch(() => {});
+
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 	if (message.type === "getGlobalJobState") {
@@ -16,6 +53,18 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 			startTime: globalJob.startTime,
 			estimatedDuration: globalJob.estimatedDuration
 		});
+		return true;
+	}
+
+	// Allow background to return cached server limit
+	if (message.type === "getServerLimit") {
+		sendResponse({ max_sentences: cachedServerLimit });
+		return true;
+	}
+
+	// Allow manual refresh trigger for limit (optional)
+	if (message.type === "refreshServerLimit") {
+		fetchAndCacheServerLimit().then(val => sendResponse({ max_sentences: val })).catch(() => sendResponse({ max_sentences: null }));
 		return true;
 	}
 

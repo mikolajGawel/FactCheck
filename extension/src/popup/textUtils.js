@@ -15,7 +15,7 @@ export function protectDots(text) {
     }
     result = result.replace(/(\d)\.(\d)/g, "$1§$2");
     return result;
-}
+} 
 
 export function restoreProtectedDots(text) {
     return (text || "").replace(/§/g, ".");

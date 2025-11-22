@@ -14,6 +14,7 @@ type RuntimeMessage =
 	| ({ type: "startJob" } & StartJobPayload)
 	| { type: "getArticles" }
 	| { type: "getArticleText"; articleId: number }
+	| { type: "getServerLimit" }
 	| { type: "ping" };
 
 type StartJobPayload = {
@@ -34,7 +35,7 @@ if (!window.__FactCheck_injected) {
 	chrome.runtime.onMessage.addListener(onMessage);
 }
 
-function onMessage(
+async function onMessage(
 	message: RuntimeMessage,
 	_sender: chrome.runtime.MessageSender,
 	sendResponse: (response?: unknown) => void
@@ -56,6 +57,18 @@ function onMessage(
 
 		case "getArticleText": {
 			sendResponse({ articleText: collectArticleText(message.articleId) });
+			return true;
+		}
+
+		case "getServerLimit": {
+			// Ask background for cached limit (background fetches it at startup)
+			try {
+				chrome.runtime.sendMessage({ type: "getServerLimit" }, resp => {
+					sendResponse({ max_sentences: resp?.max_sentences ?? null });
+				});
+			} catch (e) {
+				sendResponse({ max_sentences: null });
+			}
 			return true;
 		}
 

@@ -178,7 +178,7 @@ export function renderInProgressWithEstimate(article, startTime = Date.now()) {
 	if (!articlesContainerEl || !startBtnEl || !titleTextEl) return;
 	const est = computeEstimateSecondsFromArticle(article);
 
-	progressState.mode = "determinate";
+	progressState.mode = "determinate"; 
 	progressState.estimateSeconds = est;
 	progressState.startedAt = startTime;
 

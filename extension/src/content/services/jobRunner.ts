@@ -87,7 +87,37 @@ export async function runJob(options: RunJobOptions = {}): Promise<void> {
 	// raw HTML. If user provided explicit `options.text`, treat it as authoritative
 	// and perform truncation on it as plain text as well.
 	const textForCounting = typeof options.text === "string" ? options.text : resolvedContext.text;
-	const MAX_SENTENCES = 300;
+	// Default limit; consult background cache first (background fetches once at startup)
+	let MAX_SENTENCES = 300;
+	try {
+		const cached = await new Promise(resolve => {
+			chrome.runtime.sendMessage({ type: "getServerLimit" }, resp => resolve(resp?.max_sentences ?? null));
+		});
+		if (cached && Number.isFinite(cached)) {
+			MAX_SENTENCES = Number(cached);
+		} else if (serverAddress) {
+			// Fallback: if background hasn't fetched it yet, try fetching directly
+			try {
+				const res = await fetch(`${serverAddress}/limit`, {
+					method: "GET",
+					headers: {
+						...(getAuthHeaders() ?? {})
+					}
+				});
+				if (res.ok) {
+					const data = await res.json().catch(() => ({}));
+					const parsed = Number(data?.max_sentences);
+					if (!Number.isNaN(parsed) && parsed > 0) {
+						MAX_SENTENCES = parsed;
+					}
+				}
+			} catch (e) {
+				// ignore, default will be used
+			}
+		}
+	} catch (e) {
+		// ignore and use fallback
+	}
 	if (textForCounting) {
 		const sentences = splitIntoSentences(textForCounting);
 		if (sentences.length > MAX_SENTENCES) {
@@ -188,3 +218,22 @@ export default {
 	runJob,
 	serverAddress
 };
+
+export async function fetchServerLimit(): Promise<number | null> {
+	if (!serverAddress) return null;
+	try {
+		const res = await fetch(`${serverAddress}/limit`, {
+			method: "GET",
+			headers: {
+				...(getAuthHeaders() ?? {})
+			}
+		});
+		if (!res.ok) return null;
+		const data = await res.json().catch(() => ({}));
+		const parsed = Number(data?.max_sentences);
+		if (!Number.isNaN(parsed) && parsed > 0) return parsed;
+	} catch (e) {
+		console.warn("fetchServerLimit error:", e);
+	}
+	return null;
+}

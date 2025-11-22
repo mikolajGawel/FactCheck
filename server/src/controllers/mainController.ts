@@ -5,6 +5,11 @@ import { StartRequestSchema } from "../schemas/jobSchemas.js";
 import { ensureJobBucket, getJob, buildJobRecord, getJobBucket } from "../services/jobsService.js";
 import { buildCacheKey, readCache, writeCache } from "../services/cacheService.js";
 
+const configuredSentenceLimit = Number(process.env.ANALYZER_MAX_SENTENCES);
+const MAX_SENTENCES = Number.isNaN(configuredSentenceLimit) ? 300 : Math.max(1, configuredSentenceLimit);
+export function getSenteceLimit(req,res) {
+	return res.json({ max_sentences: MAX_SENTENCES });
+}
 export async function recvRequest(req, res) {
 	const parsedBody = StartRequestSchema.safeParse(req.body ?? {});
 	if (!parsedBody.success) {
@@ -37,7 +42,6 @@ export async function recvRequest(req, res) {
 		console.error(`[JOB ${jobId}] krytyczny błąd`, error);
 	});
 }
-
 export async function getResult(req, res) {
 	const ip = resolveIp(req);
 	const id = req.query.id as string;

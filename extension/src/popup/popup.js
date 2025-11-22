@@ -88,7 +88,7 @@ async function loadArticles() {
 
 	processedIds = await getProcessedArticles(tab.id);
 
-	chrome.tabs.sendMessage(tab.id, { type: "getArticles" }, response => {
+	chrome.tabs.sendMessage(tab.id, { type: "getArticles" }, response => { 
 		if (chrome.runtime.lastError || !response) {
 			articlesContainer.innerHTML = '<div class="loading">Problem z załadowaniem artykułu.</div>';
 			startBtn.disabled = true;
@@ -114,23 +114,36 @@ async function selectArticle(id, node) {
 		return;
 	}
 
-	chrome.tabs.sendMessage(tab.id, { type: "getArticleText", articleId: id }, response => {
-		if (chrome.runtime.lastError || !response) {
-			startBtn.disabled = true;
-			return;
-		}
-
-		const text = response.articleText || "";
-		const sentenceCount = countSentences(text);
-		const LIMIT = 300;
-		if (sentenceCount > LIMIT) {
-			render.showLongArticleWarning(sentenceCount);
-			startBtn.disabled = false;
-		} else {
-			render.clearLongArticleWarning();
-			startBtn.disabled = false;
-		}
+	const response = await new Promise(resolve => {
+		chrome.tabs.sendMessage(tab.id, { type: "getArticleText", articleId: id }, resp => resolve(resp));
 	});
+	if (chrome.runtime.lastError || !response) {
+		startBtn.disabled = true;
+		return;
+	}
+
+	const text = response.articleText || "";
+	const sentenceCount = countSentences(text);
+	// Ask content script for configured server limit; fallback to 300
+	let LIMIT = 300;
+	try {
+		const serverLimit = await new Promise(resolve => {
+			chrome.runtime.sendMessage({ type: "getServerLimit" }, resp => resolve(resp?.max_sentences ?? null));
+		});
+		if (serverLimit && Number.isFinite(serverLimit)) {
+			LIMIT = Number(serverLimit);
+		}
+	} catch (e) {
+		// ignore and use fallback
+	}
+
+	if (sentenceCount > LIMIT) {
+		render.showLongArticleWarning(sentenceCount);
+		startBtn.disabled = false;
+	} else {
+		render.clearLongArticleWarning();
+		startBtn.disabled = false;
+	}
 }
 
 startBtn.addEventListener("click", async () => {
