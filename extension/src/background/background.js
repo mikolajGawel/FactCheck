@@ -56,15 +56,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 		return true;
 	}
 
-	// Allow background to return cached server limit
 	if (message.type === "getServerLimit") {
-		sendResponse({ max_sentences: cachedServerLimit });
-		return true;
-	}
+		if (cachedServerLimit != null) {
+			sendResponse({ max_sentences: cachedServerLimit });
+			return true;
+		}
 
-	// Allow manual refresh trigger for limit (optional)
-	if (message.type === "refreshServerLimit") {
-		fetchAndCacheServerLimit().then(val => sendResponse({ max_sentences: val })).catch(() => sendResponse({ max_sentences: null }));
+		fetchAndCacheServerLimit()
+			.then(val => sendResponse({ max_sentences: val }))
+			.catch(() => sendResponse({ max_sentences: null }));
 		return true;
 	}
 

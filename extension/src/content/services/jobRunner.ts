@@ -95,25 +95,6 @@ export async function runJob(options: RunJobOptions = {}): Promise<void> {
 		});
 		if (cached && Number.isFinite(cached)) {
 			MAX_SENTENCES = Number(cached);
-		} else if (serverAddress) {
-			// Fallback: if background hasn't fetched it yet, try fetching directly
-			try {
-				const res = await fetch(`${serverAddress}/limit`, {
-					method: "GET",
-					headers: {
-						...(getAuthHeaders() ?? {})
-					}
-				});
-				if (res.ok) {
-					const data = await res.json().catch(() => ({}));
-					const parsed = Number(data?.max_sentences);
-					if (!Number.isNaN(parsed) && parsed > 0) {
-						MAX_SENTENCES = parsed;
-					}
-				}
-			} catch (e) {
-				// ignore, default will be used
-			}
 		}
 	} catch (e) {
 		// ignore and use fallback
@@ -121,7 +102,6 @@ export async function runJob(options: RunJobOptions = {}): Promise<void> {
 	if (textForCounting) {
 		const sentences = splitIntoSentences(textForCounting);
 		if (sentences.length > MAX_SENTENCES) {
-			// Keep first 299 sentences (as requested) and send that as the content.
 			const keep = sentences.slice(0, MAX_SENTENCES - 1).join(" ");
 			pageContent = keep;
 			console.info(`Truncated content sent to server: original sentences=${sentences.length}, kept=${MAX_SENTENCES - 1}`);
@@ -131,8 +111,6 @@ export async function runJob(options: RunJobOptions = {}): Promise<void> {
 	const url = options.meta?.url ?? (typeof location !== "undefined" ? location.href : null);
 	const language = navigator?.language?.split("-")[0] ?? "en";
 
-	// Try to start the job on the server. If fetch throws (network/CORS) or a non-OK
-	// response is returned, treat it like any other job failure and notify the popup.
 	let job_id: string | null = null;
 	try {
 		const start = await fetch(`${serverAddress}/start`, {
@@ -145,7 +123,6 @@ export async function runJob(options: RunJobOptions = {}): Promise<void> {
 		});
 
 		if (!start.ok) {
-			// Keep message consistent for non-ok responses
 			const errorText = await start.text().catch(() => "(no body)");
 			const message = `Server failed to start job: ${start.status} ${errorText}`;
 			console.error("Server start failed:", message);
@@ -156,7 +133,6 @@ export async function runJob(options: RunJobOptions = {}): Promise<void> {
 		const body = await start.json();
 		job_id = body.job_id;
 	} catch (err: unknown) {
-		// Treat thrown errors (CORS, network errors, etc.) the same way as non-ok
 		const message = err && typeof err === "object" && "message" in err ? (err as any).message : String(err);
 		console.error("Server start failed:", message);
 		chrome.runtime.sendMessage({ type: "jobFailed", error: `Server failed to start job: ${message}` });
@@ -195,8 +171,6 @@ export async function runJob(options: RunJobOptions = {}): Promise<void> {
 				await sleep(1000);
 			}
 		} catch (err: unknown) {
-			// Any thrown error during status check (network/CORS/json parse) should
-			// be reported the same way as other failures.
 			jobError = err && typeof err === "object" && "message" in err ? (err as any).message : String(err);
 			done = true;
 			break;
