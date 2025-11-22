@@ -33,7 +33,7 @@ function getOpenRouterClient() {
 		baseURL: process.env.OPENROUTER_BASE_URL,
 		defaultHeaders: {
 			"HTTP-Referer": process.env.OPENROUTER_SITE_URL,
-			"X-Title": process.env.OPENROUTER_APP_NAME
+			"X-Title": process.env.OPENROUTER_APP_NAME 
 		}
 	});
 
@@ -97,7 +97,10 @@ async function classifySentencesWithLLM(sentences, metadata) {
 	const client = getOpenRouterClient();
 	aiProcessingCount++;
 	try {
-		const payload = sentences.map(({ id, text }) => ({ id, text }));
+		// Exclude sentences marked as skipAI (e.g. anchors outside <p>) but keep ids
+		const payload = sentences
+			.filter(s => !s.skipAI)
+			.map(({ id, text }) => ({ id, text }));
 
 		const instructions = [
 			{

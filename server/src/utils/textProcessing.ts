@@ -24,7 +24,7 @@ export interface NormalizeTextOptions {
 	collapseNewlines?: boolean;
 	trim?: boolean;
 }
-
+ 
 export function normalizeText(raw: string, options: NormalizeTextOptions = {}): string {
 	if (!raw) return "";
 	const { collapseNewlines = true, trim = true } = options;

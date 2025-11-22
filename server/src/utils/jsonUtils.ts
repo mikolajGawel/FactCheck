@@ -20,7 +20,7 @@ export function extractJsonObject(raw: string) {
 
 	const jsonSlice = candidate.slice(startIndex, endIndex + 1);
 	return JSON.parse(jsonSlice);
-}
+} 
 
 export function stringifyForPrompt(payload) {
 	return JSON.stringify(payload, null, 2);

@@ -21,6 +21,7 @@ export interface TextBlock {
 	text: string;
 	path: string[];
 	isHeader: boolean;
+	skipAI?: boolean;
 }
 
 export interface Sentence {
@@ -28,6 +29,7 @@ export interface Sentence {
 	text: string;
 	start: number;
 	end: number;
+	skipAI?: boolean;
 }
 
 // --- Nowe: lista skrótów chronionych przed dzieleniem ---
@@ -80,7 +82,7 @@ export function parseHtmlToBlocks(html: string): TextBlock[] {
 	const $ = cheerio.load(html);
 	const blocks: TextBlock[] = [];
 
-	function traverse(node: any, path: string[], insideHeader: boolean) {
+	function traverse(node: any, path: string[], insideHeader: boolean, skipAIForNode = false) {
 		if (node.type === "text") {
 			const text = $(node).text();
 			const normalized = normalizeText(text, { trim: false });
@@ -89,7 +91,8 @@ export function parseHtmlToBlocks(html: string): TextBlock[] {
 				blocks.push({
 					text: normalized,
 					path: [...path],
-					isHeader: insideHeader
+					isHeader: insideHeader,
+					skipAI: skipAIForNode
 				});
 			}
 			return;
@@ -99,6 +102,18 @@ export function parseHtmlToBlocks(html: string): TextBlock[] {
 			const tagName = (node.name || "").toLowerCase();
 			if (IGNORED_TAGS.has(tagName)) return;
 			if (tagName === "br") return;
+
+			// Ignore <a> tags that are not inside a paragraph (`<p>`).
+			// Only allow traversing anchors when their parent or grandparent is a <p>.
+			let nextSkipAI = skipAIForNode;
+			if (tagName === "a") {
+				const parentTag = path.length ? getTagNameFromPathEntry(path[path.length - 1]) : "";
+				const grandParentTag = path.length > 1 ? getTagNameFromPathEntry(path[path.length - 2]) : "";
+				if (parentTag !== "p" && grandParentTag !== "p") {
+					// Mark this anchor and its children as skipped for AI, but still traverse
+					nextSkipAI = true;
+				}
+			}
 
 			const attribs = node.attribs || {};
 			if (
@@ -113,7 +128,7 @@ export function parseHtmlToBlocks(html: string): TextBlock[] {
 			const nextInsideHeader = insideHeader || isCurrentTagHeader;
 
 			$(node).contents().each((i, child) => {
-				traverse(child, [...path, `${tagName}[${i}]`], nextInsideHeader);
+				traverse(child, [...path, `${tagName}[${i}]`], nextInsideHeader, nextSkipAI);
 			});
 		}
 	}
@@ -155,6 +170,11 @@ function normalizeBlocks(rawBlocks: TextBlock[]): TextBlock[] {
 	return normalizedBlocks;
 }
 
+	function getTagNameFromPathEntry(tagStr: string) {
+		const match = tagStr.match(/^([a-zA-Z0-9]+)/);
+		return match ? match[1].toLowerCase() : "";
+	}
+
 export function segmentSentencesWithStructure(blocks: TextBlock[], language = "en"): Sentence[] {
 	if (!blocks || blocks.length === 0) return [];
 
@@ -172,16 +192,21 @@ export function segmentSentencesWithStructure(blocks: TextBlock[], language = "e
 				start: sentenceStartIndex + startOffset,
 				end: sentenceStartIndex + startOffset + cleaned.length
 			});
-		}
+		} 
 		sentenceStartIndex += textToCommit.length;
 		currentBuffer = "";
 	};
+
+	// We'll keep a mapping of which ranges in `currentBuffer` come from which blocks
+	let bufferBlockRanges: { start: number; end: number; skipAI?: boolean }[] = [];
 
 	for (let i = 0; i < blocks.length; i++) {
 		const currentBlock = blocks[i];
 		const nextBlock = blocks[i + 1];
 
+		const bufferOffset = currentBuffer.length;
 		currentBuffer += currentBlock.text;
+		bufferBlockRanges.push({ start: bufferOffset, end: bufferOffset + currentBlock.text.length, skipAI: currentBlock.skipAI });
 
 		let hasSentenceBreakInside = /[.!?]/.test(currentBlock.text);
 
@@ -195,20 +220,47 @@ export function segmentSentencesWithStructure(blocks: TextBlock[], language = "e
 			}
 		}
 
-		if (hasSentenceBreakInside) {
-			const subSentences = standardSegment(currentBuffer, language);
-			subSentences.forEach(s => {
+		const pushSubSentences = (subSentences: { text: string; start: number; end: number }[]) => {
+			for (const s of subSentences) {
+				const absStart = sentenceStartIndex + s.start;
+				const absEnd = sentenceStartIndex + s.end;
+
+				// Determine whether the sentence should be skipped for AI: it's skipped
+				// only when all overlapping block ranges are skipAI === true.
+				const overlapping = bufferBlockRanges.filter(r => !(r.end <= s.start || r.start >= s.end));
+				const skipAI = overlapping.length > 0 && overlapping.every(r => r.skipAI === true);
+
 				sentences.push({
 					id: sentences.length,
 					text: s.text,
-					start: sentenceStartIndex + s.start,
-					end: sentenceStartIndex + s.end
+					start: absStart,
+					end: absEnd,
+					skipAI
 				});
-			});
+			}
+		};
+
+		if (hasSentenceBreakInside) {
+			const subSentences = standardSegment(currentBuffer, language);
+			pushSubSentences(subSentences);
 			sentenceStartIndex += currentBuffer.length;
 			currentBuffer = "";
+			bufferBlockRanges = [];
 		} else if (forceStructuralBreak) {
+			// commit the whole buffer as a sentence
+			const temp = currentBuffer;
+			const startLocal = 0;
+			const endLocal = temp.length;
+			const overlapping = bufferBlockRanges.filter(r => !(r.end <= startLocal || r.start >= endLocal));
+			const skipAI = overlapping.length > 0 && overlapping.every(r => r.skipAI === true);
+
 			commitSentence(currentBuffer);
+			// The commitSentence call already pushes the trimmed sentence without skipAI flag,
+			// so we need to patch the last pushed sentence to carry skipAI information.
+			if (sentences.length > 0) {
+				sentences[sentences.length - 1].skipAI = skipAI;
+			}
+			bufferBlockRanges = [];
 		}
 	}
 
