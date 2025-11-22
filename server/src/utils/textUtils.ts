@@ -4,24 +4,57 @@ import { normalizeText, DEFAULT_NOISE_SELECTORS } from "./textProcessing.js";
 // --- Konfiguracja ---
 
 const BLOCK_TAGS = new Set([
-	"address", "article", "aside", "blockquote", "dd", "div", "dl", "dt", "fieldset",
-	"figcaption", "figure", "footer", "form", "h1", "h2", "h3", "h4", "h5", "h6",
-	"header", "hr", "li", "main", "nav", "noscript", "ol", "p", "pre", "section",
-	"table", "tfoot",	"ul", "video", "br"
+	"address",
+	"article",
+	"aside",
+	"blockquote",
+	"dd",
+	"div",
+	"dl",
+	"dt",
+	"fieldset",
+	"figcaption",
+	"figure",
+	"footer",
+	"form",
+	"h1",
+	"h2",
+	"h3",
+	"h4",
+	"h5",
+	"h6",
+	"header",
+	"hr",
+	"li",
+	"main",
+	"nav",
+	"noscript",
+	"ol",
+	"p",
+	"pre",
+	"section",
+	"table",
+	"tfoot",
+	"ul",
+	"video",
+	"br"
 ]);
 
-const IGNORED_TAGS = new Set([
-	...DEFAULT_NOISE_SELECTORS,
-	"script", "style", "meta", "head", "link", "noscript"
-]);
+const IGNORED_TAGS = new Set([...DEFAULT_NOISE_SELECTORS, "script", "style", "meta", "head", "link", "noscript"]);
 
 // --- Typy ---
+
+export interface ParagraphContext {
+	id: string;
+	depth: number;
+}
 
 export interface TextBlock {
 	text: string;
 	path: string[];
 	isHeader: boolean;
 	skipAI?: boolean;
+	paragraphContext?: ParagraphContext;
 }
 
 export interface Sentence {
@@ -35,7 +68,36 @@ export interface Sentence {
 // --- Nowe: lista skrótów chronionych przed dzieleniem ---
 
 const PROTECTED_ABBREVIATIONS = [
-	"dr", "inż", "mgr", "prof", "hab", "hab\\.", "hab\\", "dot", "s", "ul", "al", "ks", "pl", "ppłk", "płk", "gen", "mjr", "por", "ppor", "kpt", "st", "plk", "św", "r","tyś","tys", "mln", "mld","oprac","prok"
+	"dr",
+	"inż",
+	"mgr",
+	"prof",
+	"hab",
+	"hab\\.",
+	"hab\\",
+	"dot",
+	"s",
+	"ul",
+	"al",
+	"ks",
+	"pl",
+	"ppłk",
+	"płk",
+	"gen",
+	"mjr",
+	"por",
+	"ppor",
+	"kpt",
+	"st",
+	"plk",
+	"św",
+	"r",
+	"tyś",
+	"tys",
+	"mln",
+	"mld",
+	"oprac",
+	"prok"
 ];
 
 // --- Funkcje zabezpieczające kropki przed dzieleniem ---
@@ -45,13 +107,12 @@ function protectDots(text: string): string {
 
 	// 1. Skróty: dr. → dr§
 	for (const abbr of PROTECTED_ABBREVIATIONS) {
-	// specjalna logika dla "r." tak nie dało sie inaczej
-	if (abbr === "r") {
-		result = result.replace(/\br\.(?=\s+[A-ZĄĆĘŁŃÓŚŹŻ])/g, "r."); 
-		result = result.replace(/\br\.(?=\s+[^A-ZĄĆĘŁŃÓŚŹŻ])/g, "r§");
-		continue;
-	}
-
+		// specjalna logika dla "r." tak nie dało sie inaczej
+		if (abbr === "r") {
+			result = result.replace(/\br\.(?=\s+[A-ZĄĆĘŁŃÓŚŹŻ])/g, "r.");
+			result = result.replace(/\br\.(?=\s+[^A-ZĄĆĘŁŃÓŚŹŻ])/g, "r§");
+			continue;
+		}
 
 		const re = new RegExp(`\\b${abbr}\\.(?=\\s|$)`, "gi");
 		result = result.replace(re, m => m.slice(0, -1) + "§");
@@ -81,8 +142,15 @@ export function limitSentences<T>(sentences: T[], maxCount?: number) {
 export function parseHtmlToBlocks(html: string): TextBlock[] {
 	const $ = cheerio.load(html);
 	const blocks: TextBlock[] = [];
+	let paragraphIdCounter = 0;
 
-	function traverse(node: any, path: string[], insideHeader: boolean, skipAIForNode = false) {
+	function traverse(
+		node: any,
+		path: string[],
+		insideHeader: boolean,
+		skipAIForNode = false,
+		paragraphContext?: ParagraphContext
+	) {
 		if (node.type === "text") {
 			const text = $(node).text();
 			const normalized = normalizeText(text, { trim: false });
@@ -92,7 +160,8 @@ export function parseHtmlToBlocks(html: string): TextBlock[] {
 					text: normalized,
 					path: [...path],
 					isHeader: insideHeader,
-					skipAI: skipAIForNode
+					skipAI: skipAIForNode,
+					paragraphContext
 				});
 			}
 			return;
@@ -127,9 +196,21 @@ export function parseHtmlToBlocks(html: string): TextBlock[] {
 			const isCurrentTagHeader = /^h[1-6]$/.test(tagName);
 			const nextInsideHeader = insideHeader || isCurrentTagHeader;
 
-			$(node).contents().each((i, child) => {
-				traverse(child, [...path, `${tagName}[${i}]`], nextInsideHeader, nextSkipAI);
-			});
+			let nextParagraphContext: ParagraphContext | undefined = paragraphContext;
+			if (tagName === "p") {
+				nextParagraphContext = { id: `p-${paragraphIdCounter++}`, depth: 0 };
+			} else if (paragraphContext) {
+				nextParagraphContext = {
+					id: paragraphContext.id,
+					depth: paragraphContext.depth + 1
+				};
+			}
+
+			$(node)
+				.contents()
+				.each((i, child) => {
+					traverse(child, [...path, `${tagName}[${i}]`], nextInsideHeader, nextSkipAI, nextParagraphContext);
+				});
 		}
 	}
 
@@ -170,10 +251,10 @@ function normalizeBlocks(rawBlocks: TextBlock[]): TextBlock[] {
 	return normalizedBlocks;
 }
 
-	function getTagNameFromPathEntry(tagStr: string) {
-		const match = tagStr.match(/^([a-zA-Z0-9]+)/);
-		return match ? match[1].toLowerCase() : "";
-	}
+function getTagNameFromPathEntry(tagStr: string) {
+	const match = tagStr.match(/^([a-zA-Z0-9]+)/);
+	return match ? match[1].toLowerCase() : "";
+}
 
 export function segmentSentencesWithStructure(blocks: TextBlock[], language = "en"): Sentence[] {
 	if (!blocks || blocks.length === 0) return [];
@@ -192,7 +273,7 @@ export function segmentSentencesWithStructure(blocks: TextBlock[], language = "e
 				start: sentenceStartIndex + startOffset,
 				end: sentenceStartIndex + startOffset + cleaned.length
 			});
-		} 
+		}
 		sentenceStartIndex += textToCommit.length;
 		currentBuffer = "";
 	};
@@ -206,17 +287,23 @@ export function segmentSentencesWithStructure(blocks: TextBlock[], language = "e
 
 		const bufferOffset = currentBuffer.length;
 		currentBuffer += currentBlock.text;
-		bufferBlockRanges.push({ start: bufferOffset, end: bufferOffset + currentBlock.text.length, skipAI: currentBlock.skipAI });
+		bufferBlockRanges.push({
+			start: bufferOffset,
+			end: bufferOffset + currentBlock.text.length,
+			skipAI: currentBlock.skipAI
+		});
 
 		let hasSentenceBreakInside = /[.!?]/.test(currentBlock.text);
 
-		let forceStructuralBreak = false;
-
-		if (!hasSentenceBreakInside && nextBlock) {
+		let isStructuralBreak = false;
+		if (nextBlock) {
 			if (currentBlock.isHeader || nextBlock.isHeader) {
-				forceStructuralBreak = true;
-			} else if (isStructuralBreakSignificant(currentBlock.path, nextBlock.path)) {
-				forceStructuralBreak = true;
+				isStructuralBreak = true;
+			} else if (
+				isStructuralBreakSignificant(currentBlock.path, nextBlock.path) &&
+				!shouldSuppressStructuralBreakForParagraphChildren(currentBlock, nextBlock)
+			) {
+				isStructuralBreak = true;
 			}
 		}
 
@@ -242,11 +329,35 @@ export function segmentSentencesWithStructure(blocks: TextBlock[], language = "e
 
 		if (hasSentenceBreakInside) {
 			const subSentences = standardSegment(currentBuffer, language);
-			pushSubSentences(subSentences);
-			sentenceStartIndex += currentBuffer.length;
-			currentBuffer = "";
-			bufferBlockRanges = [];
-		} else if (forceStructuralBreak) {
+
+			// Check if the last sentence is incomplete (no terminal punctuation)
+			// and if we should continue accumulating (no structural break).
+			const lastS = subSentences[subSentences.length - 1];
+			const lastHasPunctuation = lastS && /[.!?]$/.test(lastS.text);
+
+			if (lastS && !lastHasPunctuation && nextBlock && !isStructuralBreak) {
+				// Keep the last segment in buffer
+				subSentences.pop();
+				pushSubSentences(subSentences);
+
+				const cutPoint = lastS.start;
+				sentenceStartIndex += cutPoint;
+				currentBuffer = currentBuffer.slice(cutPoint);
+
+				bufferBlockRanges = bufferBlockRanges
+					.map(r => ({
+						start: r.start - cutPoint,
+						end: r.end - cutPoint,
+						skipAI: r.skipAI
+					}))
+					.filter(r => r.end > 0);
+			} else {
+				pushSubSentences(subSentences);
+				sentenceStartIndex += currentBuffer.length;
+				currentBuffer = "";
+				bufferBlockRanges = [];
+			}
+		} else if (isStructuralBreak) {
 			// commit the whole buffer as a sentence
 			const temp = currentBuffer;
 			const startLocal = 0;
@@ -305,6 +416,19 @@ function isStructuralBreakSignificant(pathA: string[], pathB: string[]): boolean
 	}
 
 	return false;
+}
+
+function shouldSuppressStructuralBreakForParagraphChildren(
+	blockA: TextBlock,
+	blockB: TextBlock,
+	maxDepthFromParagraph = 2
+): boolean {
+	const ctxA = blockA.paragraphContext;
+	const ctxB = blockB.paragraphContext;
+	if (!ctxA || !ctxB) return false;
+	if (ctxA.id !== ctxB.id) return false;
+	if (ctxA.depth > maxDepthFromParagraph || ctxB.depth > maxDepthFromParagraph) return false;
+	return true;
 }
 
 // --- segmenter z ochroną kropek ---
