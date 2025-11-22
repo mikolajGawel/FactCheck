@@ -8,6 +8,16 @@
 	--primary-strong: #0f63a8;
 	--highlight: #f0f8ff;
 	--highlight-selected: #dbeeff;
+
+	/* processed & warning theme-aware vars */
+	--processed-bg: #f0f0f0;
+	--processed-border-left: #4caf50;
+	--processed-text: #4caf50;
+	--processed-hover-border: #dcdcdc;
+
+	--warning-bg: #fff4e5;
+	--warning-border: #ffd8a8;
+	--warning-text: #6a4a00;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -21,6 +31,16 @@
 		--primary-strong: #1f6ce6;
 		--highlight: #2a2b33;
 		--highlight-selected: #3a3c46;
+
+		/* dark-mode variants for processed & warning */
+		--processed-bg: rgba(255,255,255,0.03); /* subtle panel-tint in dark */
+		--processed-border-left: #69f0ae; /* visible green on dark */
+		--processed-text: #69f0ae;
+		--processed-hover-border: var(--border);
+
+		--warning-bg: #3a2a12;
+		--warning-border: #6b4a12;
+		--warning-text: #ffd28a;
 	}
 }
 
@@ -68,6 +88,27 @@ h1 {
 .article-item.selected {
 	background: var(--highlight-selected);
 	outline: 2px solid var(--primary);
+}
+
+.article-item.processed {
+    opacity: 0.6;
+    background-color: var(--processed-bg);
+    cursor: default;
+    border-left: 4px solid var(--processed-border-left);
+}
+
+.article-item.processed:hover {
+    background-color: var(--processed-bg);
+    border-color: var(--processed-hover-border);
+    border-left-color: var(--processed-border-left);
+}
+
+.article-item.processed .article-title::after {
+    content: " (Przetworzony)";
+    font-size: 0.8em;
+    color: var(--processed-text);
+    margin-left: 6px;
+    font-weight: normal;
 }
 
 .article-title {
@@ -178,9 +219,9 @@ button[disabled] {
 }
 
 .warning {
-	background: #fff4e5;
-	border: 1px solid #ffd8a8;
-	color: #6a4a00;
+	background: var(--warning-bg);
+	border: 1px solid var(--warning-border);
+	color: var(--warning-text);
 	border-radius: 6px;
 	margin: 8px 0;
 	font-size: 13px;

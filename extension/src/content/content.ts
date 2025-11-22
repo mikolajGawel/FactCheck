@@ -72,9 +72,9 @@ function onMessage(
 function resolveStartJobContext(payload: StartJobPayload): {
 	context: HighlightContext;
 	content: string;
-	meta: { title: string | null; url: string | null };
+	meta: { title: string | null; url: string | null; articleId?: number };
 } {
-	const meta = { title: payload.title ?? null, url: payload.url ?? null };
+	const meta = { title: payload.title ?? null, url: payload.url ?? null, articleId: payload.articleId };
 
 	if (typeof payload.articleId === "number") {
 		const context = buildArticleContext(payload.articleId);

@@ -9,6 +9,7 @@ const serverAddress = process.env.SERVER ?? "";
 export interface JobMeta {
 	title?: string | null;
 	url?: string | null;
+	articleId?: number;
 }
 
 export interface RunJobOptions {
@@ -81,7 +82,11 @@ export async function runJob(options: RunJobOptions = {}): Promise<void> {
 			if (status.status === "done") {
 				highlightText(status.result, resolvedContext);
 				console.log("Wynik:", status.result);
-				chrome.runtime.sendMessage({ type: "jobCompleted" });
+				chrome.runtime.sendMessage({
+					type: "jobCompleted",
+					articleId: options.meta?.articleId,
+					url: options.meta?.url
+				});
 				done = true;
 			} else if (status.status === "failed" || status.status === "error") {
 				jobError = status.message || "Job failed on the server.";
