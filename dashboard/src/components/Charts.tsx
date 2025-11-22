@@ -1,49 +1,238 @@
 import type { LogEntry } from '../types';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
+import { 
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
+  LineChart, Line, ScatterChart, Scatter, ZAxis, Legend, Cell 
+} from 'recharts';
 import { format } from 'date-fns';
 
 interface Props {
   logs: LogEntry[];
 }
 
+const COLORS = [
+  '#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', 
+  '#ec4899', '#06b6d4', '#84cc16', '#6366f1', '#d946ef',
+  '#14b8a6', '#f43f5e', '#eab308', '#a855f7', '#22c55e'
+];
+
+const shortenModelName = (name: string) => {
+  const parts = name.split('/');
+  if (parts.length > 1) {
+    return parts.slice(1).join('/');
+  }
+  return name.length > 20 ? name.substring(0, 20) + '...' : name;
+};
+
+const formatDuration = (ms: number) => {
+  if (ms >= 1000) {
+    return `${(ms / 1000).toFixed(1)}s`;
+  }
+  return `${Math.round(ms)}ms`;
+};
+
 export default function Charts({ logs }: Props) {
   // Aggregate data for charts
-  const costByModel = logs.reduce((acc, log) => {
+  const modelStats = logs.reduce((acc, log) => {
     const model = log.data.model;
-    acc[model] = (acc[model] || 0) + (log.data.total_cost || 0);
-    return acc;
-  }, {} as Record<string, number>);
+    if (!acc[model]) {
+      acc[model] = {
+        count: 0,
+        totalCost: 0,
+        totalLatency: 0,
+        totalGenTime: 0,
+        totalTokens: 0,
+        totalInputTokens: 0,
+        tpsSamples: []
+      };
+    }
+    
+    const stats = acc[model];
+    stats.count++;
+    stats.totalCost += log.data.total_cost || 0;
+    stats.totalLatency += log.data.latency || 0;
+    stats.totalGenTime += log.data.generation_time || 0;
+    stats.totalTokens += log.data.tokens_completion || 0;
+    stats.totalInputTokens += log.data.tokens_prompt || 0;
 
-  const costData = Object.entries(costByModel).map(([name, value]) => ({ name, value }));
+    if (log.data.generation_time > 0) {
+      const tps = (log.data.tokens_completion || 0) / (log.data.generation_time / 1000);
+      stats.tpsSamples.push(tps);
+    }
+
+    return acc;
+  }, {} as Record<string, { 
+    count: number; 
+    totalCost: number; 
+    totalLatency: number; 
+    totalGenTime: number; 
+    totalTokens: number; 
+    totalInputTokens: number;
+    tpsSamples: number[];
+  }>);
+
+  const chartData = Object.entries(modelStats).map(([name, stats]) => {
+    const avgTps = stats.tpsSamples.length > 0 
+      ? stats.tpsSamples.reduce((a, b) => a + b, 0) / stats.tpsSamples.length 
+      : 0;
+    
+    return {
+      name: shortenModelName(name),
+      fullName: name,
+      cost: stats.totalCost,
+      avgLatency: stats.totalLatency / stats.count,
+      avgGenTime: stats.totalGenTime / stats.count,
+      avgTps: avgTps,
+      avgCost: stats.totalCost / stats.count,
+      outputInputRatio: stats.totalInputTokens > 0 ? stats.totalTokens / stats.totalInputTokens : 0
+    };
+  });
 
   const latencyData = logs.slice(-20).map(log => ({
     time: format(new Date(log.data.created_at), 'HH:mm:ss'),
     latency: log.data.latency / 1000, // Convert to seconds
-    model: log.data.model
+    model: shortenModelName(log.data.model)
   }));
 
+  // Custom Legend Payload
+  const legendPayload = chartData.map((entry, index) => ({
+    value: entry.name,
+    color: COLORS[index % COLORS.length]
+  }));
+
+  const renderLegend = () => (
+    <ul style={{ display: 'flex', flexWrap: 'wrap', gap: '15px', justifyContent: 'center', padding: '10px 0 0 0', margin: 0, listStyle: 'none' }}>
+      {legendPayload.map((entry, index) => (
+        <li key={`item-${index}`} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--text-secondary)' }}>
+          <span style={{ width: 10, height: 10, backgroundColor: entry.color, borderRadius: '2px' }} />
+          {entry.value}
+        </li>
+      ))}
+    </ul>
+  );
+
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(500px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(600px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
+      
+      {/* Cost by Model */}
       <div style={{ backgroundColor: 'var(--bg-card)', padding: '1.5rem', borderRadius: '0.75rem', border: '1px solid var(--border-color)' }}>
-        <h3 style={{ marginBottom: '1.5rem', color: 'var(--text-primary)' }}>Cost by Model</h3>
+        <h3 style={{ marginBottom: '1.5rem', color: 'var(--text-primary)' }}>Total Cost by Model</h3>
         <div style={{ height: '300px' }}>
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={costData}>
+            <BarChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" vertical={false} />
-              <XAxis dataKey="name" stroke="var(--text-secondary)" fontSize={12} tick={{fill: 'var(--text-secondary)'}} />
+              <XAxis dataKey="name" tick={false} height={10} />
               <YAxis stroke="var(--text-secondary)" fontSize={12} tick={{fill: 'var(--text-secondary)'}} tickFormatter={(value) => `$${value.toFixed(3)}`} />
               <Tooltip 
                 contentStyle={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
                 itemStyle={{ color: 'var(--text-primary)' }}
                 formatter={(value: number) => [`$${value.toFixed(4)}`, 'Cost']}
               />
-              <Bar dataKey="value" fill="var(--accent-primary)" radius={[4, 4, 0, 0]} />
+              <Legend content={renderLegend} />
+              <Bar dataKey="cost" name="Total Cost">
+                {chartData.map((_entry, index) => (
+                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                ))}
+              </Bar>
             </BarChart>
           </ResponsiveContainer>
         </div>
       </div>
 
+      {/* TPS Chart */}
       <div style={{ backgroundColor: 'var(--bg-card)', padding: '1.5rem', borderRadius: '0.75rem', border: '1px solid var(--border-color)' }}>
+        <h3 style={{ marginBottom: '1.5rem', color: 'var(--text-primary)' }}>Avg Tokens Per Second (TPS)</h3>
+        <div style={{ height: '300px' }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={chartData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" vertical={false} />
+              <XAxis dataKey="name" tick={false} height={10} />
+              <YAxis stroke="var(--text-secondary)" fontSize={12} tick={{fill: 'var(--text-secondary)'}} />
+              <Tooltip 
+                contentStyle={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
+                itemStyle={{ color: 'var(--text-primary)' }}
+                formatter={(value: number) => [value.toFixed(2), 'TPS']}
+              />
+              <Legend content={renderLegend} />
+              <Bar dataKey="avgTps" name="Avg TPS">
+                {chartData.map((_entry, index) => (
+                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* Speed Breakdown */}
+      <div style={{ backgroundColor: 'var(--bg-card)', padding: '1.5rem', borderRadius: '0.75rem', border: '1px solid var(--border-color)' }}>
+        <h3 style={{ marginBottom: '1.5rem', color: 'var(--text-primary)' }}>Speed Breakdown (Latency + Generation)</h3>
+        <div style={{ height: '300px' }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={chartData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" vertical={false} />
+              <XAxis dataKey="name" tick={false} height={10} />
+              <YAxis stroke="var(--text-secondary)" fontSize={12} tick={{fill: 'var(--text-secondary)'}} tickFormatter={formatDuration} />
+              <Tooltip 
+                contentStyle={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
+                itemStyle={{ color: 'var(--text-primary)' }}
+                formatter={(value: number) => formatDuration(value)}
+              />
+              <Legend content={renderLegend} />
+              <Bar dataKey="avgLatency" stackId="a" name="Avg Latency">
+                {chartData.map((_entry, index) => (
+                  <Cell key={`cell-lat-${index}`} fill={COLORS[index % COLORS.length]} opacity={0.5} />
+                ))}
+              </Bar>
+              <Bar dataKey="avgGenTime" stackId="a" name="Avg Gen Time">
+                {chartData.map((_entry, index) => (
+                  <Cell key={`cell-gen-${index}`} fill={COLORS[index % COLORS.length]} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* Speed vs Cost Scatter */}
+      <div style={{ backgroundColor: 'var(--bg-card)', padding: '1.5rem', borderRadius: '0.75rem', border: '1px solid var(--border-color)' }}>
+        <h3 style={{ marginBottom: '1.5rem', color: 'var(--text-primary)' }}>Speed vs Cost Efficiency</h3>
+        <div style={{ height: '300px' }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 40 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
+              <XAxis type="number" dataKey="avgCost" name="Avg Cost" unit="$" stroke="var(--text-secondary)" tick={{fill: 'var(--text-secondary)'}} tickFormatter={(val) => val.toFixed(4)} />
+              <YAxis type="number" dataKey="avgTps" name="Speed" unit=" TPS" stroke="var(--text-secondary)" tick={{fill: 'var(--text-secondary)'}} width={80} />
+              <ZAxis type="number" dataKey="outputInputRatio" range={[50, 400]} name="Output/Input Ratio" />
+              <Tooltip 
+                cursor={{ strokeDasharray: '3 3' }}
+                content={({ active, payload }) => {
+                  if (active && payload && payload.length) {
+                    const data = payload[0].payload;
+                    return (
+                      <div style={{ backgroundColor: 'var(--bg-secondary)', padding: '0.5rem', border: '1px solid var(--border-color)', borderRadius: '0.25rem' }}>
+                        <p style={{ fontWeight: 'bold', marginBottom: '0.25rem' }}>{data.fullName}</p>
+                        <p>Cost: ${data.avgCost.toFixed(5)}</p>
+                        <p>Speed: {data.avgTps.toFixed(2)} TPS</p>
+                        <p>Out/In Ratio: {data.outputInputRatio.toFixed(2)}</p>
+                      </div>
+                    );
+                  }
+                  return null;
+                }}
+              />
+              <Scatter name="Models" data={chartData} fill="var(--accent-primary)">
+                {chartData.map((_entry, index) => (
+                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                ))}
+              </Scatter>
+              <Legend content={renderLegend} />
+            </ScatterChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* Latency Trend */}
+      <div style={{ backgroundColor: 'var(--bg-card)', padding: '1.5rem', borderRadius: '0.75rem', border: '1px solid var(--border-color)', gridColumn: '1 / -1' }}>
         <h3 style={{ marginBottom: '1.5rem', color: 'var(--text-primary)' }}>Latency Trend (Last 20 Requests)</h3>
         <div style={{ height: '300px' }}>
           <ResponsiveContainer width="100%" height="100%">
