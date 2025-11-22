@@ -41,7 +41,7 @@ function getOpenRouterClient() {
 }
 
 export async function analyzeArticleSentences(payload, _context?) {
-	const { content, title = null } = payload;
+	const { content, title = null, url = null } = payload;
 	const language = payload.language?.trim() || "en";
 
 	// ZMIANA: Najpierw parsujemy strukturę HTML
@@ -63,7 +63,7 @@ export async function analyzeArticleSentences(payload, _context?) {
 	}
 
 	const limitedSentences = limitSentences(allSentences, MAX_SENTENCES);
-	const llmResponse = await classifySentencesWithLLM(limitedSentences, { title, language });
+	const llmResponse = await classifySentencesWithLLM(limitedSentences, { title, language, url });
 	const spans = buildSpansFromClassification(limitedSentences, llmResponse.sentences);
 
 	const analyzerResult = {
@@ -130,7 +130,10 @@ async function classifySentencesWithLLM(sentences, metadata) {
 
 		new Promise(resolve => setTimeout(resolve, 3000)).then(() => {
 			console.log("Logging AI call with generation ID:", completion.id);
-			logAICall(completion.id);
+			logAICall(completion.id, { 
+				url: metadata.url, 
+				article_title: metadata.title 
+			});
 		});
 
 		const rawContent = completion.choices?.[0]?.message?.content;
