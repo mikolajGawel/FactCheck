@@ -441,15 +441,37 @@ function standardSegment(text: string, language: string) {
 	if (typeof Intl !== "undefined" && typeof (Intl as any).Segmenter === "function") {
 		const segmenter = new (Intl as any).Segmenter(language, { granularity: "sentence" });
 		for (const s of segmenter.segment(protectedText)) {
-			const t = restoreProtectedDots(s.segment.trim());
-			if (t) res.push({ text: t, start: s.index, end: s.index + s.segment.length });
+			const segmentStr = s.segment;
+			const trimmedStr = segmentStr.trim();
+
+			if (trimmedStr.length > 0) {
+				const startOffset = segmentStr.search(/\S/);
+				const t = restoreProtectedDots(trimmedStr);
+
+				res.push({
+					text: t,
+					start: s.index + startOffset,
+					end: s.index + startOffset + trimmedStr.length
+				});
+			}
 		}
 	} else {
 		const re = /[^.!?]+[.!?]+|[^.!?]+$/g;
 		let m;
 		while ((m = re.exec(protectedText)) !== null) {
-			const t = restoreProtectedDots(m[0].trim());
-			if (t) res.push({ text: t, start: m.index, end: m.index + m[0].length });
+			const segmentStr = m[0];
+			const trimmedStr = segmentStr.trim();
+
+			if (trimmedStr.length > 0) {
+				const startOffset = segmentStr.search(/\S/);
+				const t = restoreProtectedDots(trimmedStr);
+
+				res.push({
+					text: t,
+					start: m.index + startOffset,
+					end: m.index + startOffset + trimmedStr.length
+				});
+			}
 		}
 	}
 	return res;

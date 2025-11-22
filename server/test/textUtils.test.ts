@@ -24,6 +24,20 @@ test("segmentSentencesWithStructure returns stable offsets from HTML", () => {
 		sentences.map(sentence => sentence.text),
 		["First fact.", "Second opinion!", "Third sentence?"]
 	);
+
+	// The concatenated normalized text should contain each sentence exactly
+	const joined = blocks.map(b => b.text).join("");
+	for (let i = 0; i < sentences.length; i++) {
+		const s = sentences[i];
+		// The substring denoted by start..end must equal the sentence text
+		assert.equal(joined.slice(s.start, s.end), s.text);
+		// Leading character of a sentence must not be a whitespace
+		assert.notEqual(joined[s.start], " ");
+		// Trailing whitespace (space between sentences) should be outside the sentence
+		if (s.end < joined.length) {
+			assert.equal(joined[s.end], " ");
+		}
+	}
 });
 
 test.describe("segmentSentencesWithStructure keeps shallow paragraph children together", () => {
