@@ -1,15 +1,18 @@
-version: '3.8'
-
 services:
   server:
-    build: ./server
-    ports:
-      - "3000:3000"
-    volumes:
-      - ./server/logs:/app/logs
-      - ./server/.env:/app/.env
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    env_file:
+      - ./server/.env
     environment:
-      - NODE_ENV=production
+      NODE_ENV: production
+      PORT: ${PORT:-3000}
+    ports:
+      - "${HOST_PORT:-3000}:3000"
+    volumes:
+      - ./server/logs:/app/logs:rw
+    restart: unless-stopped
 
   dashboard:
     build: ./dashboard
