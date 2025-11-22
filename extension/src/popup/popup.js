@@ -9,6 +9,7 @@ let selectedId = null;
 let articles = [];
 let jobState = 0; // 0: idle, 1: progress, 2: completed, -1: error
 let processedIds = new Set();
+let selectedArticleText = "";
 
 render.initRender({ articlesContainer, startBtn, titleText });
 
@@ -123,6 +124,7 @@ async function selectArticle(id, node) {
 	}
 
 	const text = response.articleText || "";
+	selectedArticleText = text;
 	const sentenceCount = countSentences(text);
 	// Ask content script for configured server limit; fallback to 300
 	let LIMIT = 300;
@@ -162,7 +164,8 @@ startBtn.addEventListener("click", async () => {
 	}
 
 	const article = articles.find(a => a.id === selectedId);
-	const estimatedDuration = render.computeEstimateSecondsFromArticle(article);
+	// Prefer using the full selected article text for estimate; fall back to article.snippet
+	const estimatedDuration = render.computeEstimateSecondsFromText(selectedArticleText || article?.snippet || "");
 	const startTime = Date.now();
 
 	const response = await new Promise(resolve => {
@@ -183,7 +186,8 @@ startBtn.addEventListener("click", async () => {
 		return;
 	}
 
-	render.renderInProgressWithEstimate(article, startTime);
+	// Render using the computed full-text estimate so the progress bar matches document size
+	render.showDeterminateEstimate(estimatedDuration, startTime);
 	chrome.tabs.sendMessage(tab.id, {
 		type: "startJob",
 		articleId: selectedId,

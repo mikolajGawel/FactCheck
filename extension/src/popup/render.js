@@ -90,16 +90,38 @@ export function formatTimeSeconds(sec) {
 
 export function computeEstimateSecondsFromArticle(article) {
 	const snippet = (article?.snippet || "").trim();
+	return computeEstimateSecondsFromText(snippet);
+}
+
+export function computeEstimateSecondsFromText(text) {
+	const snippet = (text || "").trim();
 	let sentences = 0;
 	try {
 		sentences = countSentences(snippet || "");
 	} catch (e) {
 		sentences = snippet ? Math.max(1, (snippet.match(/[.!?]+/g) || []).length) : 1;
 	}
-	const secondsPerSentence = 0.2; // ~0.2s per sentence
+	const secondsPerSentence = 0.35; 
 	const estimatedSeconds = Math.max(1, Math.round(sentences * secondsPerSentence));
 	progressState.estimateSentences = sentences;
 	return estimatedSeconds;
+}
+
+export function showDeterminateEstimate(estimatedSeconds, startTime = Date.now()) {
+	if (!articlesContainerEl || !startBtnEl || !titleTextEl) return;
+	progressState.mode = "determinate";
+	progressState.estimateSeconds = estimatedSeconds;
+	progressState.startedAt = startTime;
+
+	articlesContainerEl.innerHTML = `
+		<div class="state">
+			<img src="inprogress.gif">
+			<div class="progress-wrap"><div class="progress-bar"></div></div>
+			<div class="estimate">Przewidywany czas: <span class="estimate-time">${formatTimeSeconds(estimatedSeconds)}</span></div>
+		</div>`;
+	startBtnEl.style.display = "none";
+	titleTextEl.textContent = "Analiza w toku";
+	startProgressAnimation(estimatedSeconds, progressState.startedAt);
 }
 
 export function startProgressAnimation(totalSeconds, startedAt = Date.now()) {
@@ -109,8 +131,7 @@ export function startProgressAnimation(totalSeconds, startedAt = Date.now()) {
 	const bar = articlesContainerEl?.querySelector(".progress-bar");
 	const estimateLabel = articlesContainerEl?.querySelector(".estimate");
 	if (estimateLabel) {
-		const sentencesPart = progressState.estimateSentences ? ` — ${progressState.estimateSentences} zdań` : "";
-		estimateLabel.innerHTML = `Przewidywany czas: <span class="estimate-time">${formatTimeSeconds(_progressDuration)}</span>${sentencesPart}`;
+		estimateLabel.innerHTML = `Przewidywany czas: <span class="estimate-time">${formatTimeSeconds(_progressDuration)}</span>`;
 	}
 
 	function tick() {
