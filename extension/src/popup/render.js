@@ -1,3 +1,5 @@
+import { countSentences } from "./textUtils.js";
+
 let articlesContainerEl = null;
 let startBtnEl = null;
 let titleTextEl = null;
@@ -9,6 +11,7 @@ let _progressDuration = 0;
 const progressState = {
 	mode: "idle", // idle | determinate | indeterminate
 	estimateSeconds: null,
+	estimateSentences: null,
 	startedAt: 0
 };
 
@@ -27,7 +30,7 @@ export function showLongArticleWarning(count) {
 	const warn = document.createElement("div");
 	warn.id = "longArticleWarning";
 	warn.className = "warning";
-	warn.innerHTML = `Artykuł jest za długi i może nie zostać w całości przetworzony.`;
+	warn.innerHTML = `Artykuł jest za długi i nie może zostać w całości przetworzony.`;
 	const container = document.querySelector(".container");
 	if (container) container.insertBefore(warn, container.querySelector(".controls"));
 }
@@ -87,9 +90,16 @@ export function formatTimeSeconds(sec) {
 
 export function computeEstimateSecondsFromArticle(article) {
 	const snippet = (article?.snippet || "").trim();
-	const words = snippet ? snippet.split(/\s+/).filter(Boolean).length : 40;
-	const est = Math.max(6, Math.round(6 + words * 0.6));
-	return est;
+	let sentences = 0;
+	try {
+		sentences = countSentences(snippet || "");
+	} catch (e) {
+		sentences = snippet ? Math.max(1, (snippet.match(/[.!?]+/g) || []).length) : 1;
+	}
+	const secondsPerSentence = 0.2; // ~0.2s per sentence
+	const estimatedSeconds = Math.max(1, Math.round(sentences * secondsPerSentence));
+	progressState.estimateSentences = sentences;
+	return estimatedSeconds;
 }
 
 export function startProgressAnimation(totalSeconds, startedAt = Date.now()) {
@@ -98,10 +108,10 @@ export function startProgressAnimation(totalSeconds, startedAt = Date.now()) {
 	_progressStart = startedAt;
 	const bar = articlesContainerEl?.querySelector(".progress-bar");
 	const estimateLabel = articlesContainerEl?.querySelector(".estimate");
-	if (estimateLabel)
-		estimateLabel.innerHTML = `Przewidywany czas: <span class="estimate-time">${formatTimeSeconds(
-			_progressDuration
-		)}</span>`;
+	if (estimateLabel) {
+		const sentencesPart = progressState.estimateSentences ? ` — ${progressState.estimateSentences} zdań` : "";
+		estimateLabel.innerHTML = `Przewidywany czas: <span class="estimate-time">${formatTimeSeconds(_progressDuration)}</span>${sentencesPart}`;
+	}
 
 	function tick() {
 		const elapsed = (Date.now() - _progressStart) / 1000;
@@ -153,9 +163,7 @@ export function renderInProgress(startTime, estimatedDuration) {
             <div class="state">
                 <img src="inprogress.gif">
                 <div class="progress-wrap"><div class="progress-bar"></div></div>
-                <div class="estimate">Przewidywany czas: <span class="estimate-time">${formatTimeSeconds(
-					progressState.estimateSeconds
-				)}</span></div>
+                <div class="estimate">Przewidywany czas: <span class="estimate-time">${formatTimeSeconds(progressState.estimateSeconds)}</span>${progressState.estimateSentences ? ` — ${progressState.estimateSentences} zdań` : ""}</div>
             </div>`;
 		startBtnEl.style.display = "none";
 		titleTextEl.textContent = "Analiza w toku";
@@ -183,11 +191,11 @@ export function renderInProgressWithEstimate(article, startTime = Date.now()) {
 	progressState.startedAt = startTime;
 
 	articlesContainerEl.innerHTML = `
-        <div class="state">
-            <img src="inprogress.gif">
-            <div class="progress-wrap"><div class="progress-bar"></div></div>
-            <div class="estimate">Przewidywany czas: <span class="estimate-time">${formatTimeSeconds(est)}</span></div>
-        </div>`;
+		<div class="state">
+			<img src="inprogress.gif">
+			<div class="progress-wrap"><div class="progress-bar"></div></div>
+			<div class="estimate">Przewidywany czas: <span class="estimate-time">${formatTimeSeconds(est)}</span>${progressState.estimateSentences ? ` — ${progressState.estimateSentences} zdań` : ""}</div>
+		</div>`;
 	startBtnEl.style.display = "none";
 	titleTextEl.textContent = "Analiza w toku";
 	startProgressAnimation(est, progressState.startedAt);

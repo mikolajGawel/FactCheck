@@ -82,10 +82,6 @@ export async function runJob(options: RunJobOptions = {}): Promise<void> {
 		return res;
 	}
 
-	// If we used resolvedContext.html as the pageContent, consider truncating based
-	// on resolvedContext.text (the plain text snapshot) so we don't try to truncate
-	// raw HTML. If user provided explicit `options.text`, treat it as authoritative
-	// and perform truncation on it as plain text as well.
 	const textForCounting = typeof options.text === "string" ? options.text : resolvedContext.text;
 	// Default limit; consult background cache first (background fetches once at startup)
 	let MAX_SENTENCES = 300;
@@ -97,15 +93,6 @@ export async function runJob(options: RunJobOptions = {}): Promise<void> {
 			MAX_SENTENCES = Number(cached);
 		}
 	} catch (e) {
-		// ignore and use fallback
-	}
-	if (textForCounting) {
-		const sentences = splitIntoSentences(textForCounting);
-		if (sentences.length > MAX_SENTENCES) {
-			const keep = sentences.slice(0, MAX_SENTENCES - 1).join(" ");
-			pageContent = keep;
-			console.info(`Truncated content sent to server: original sentences=${sentences.length}, kept=${MAX_SENTENCES - 1}`);
-		}
 	}
 	const title = options.meta?.title ?? resolvedContext.title ?? null;
 	const url = options.meta?.url ?? (typeof location !== "undefined" ? location.href : null);

@@ -139,7 +139,7 @@ async function selectArticle(id, node) {
 
 	if (sentenceCount > LIMIT) {
 		render.showLongArticleWarning(sentenceCount);
-		startBtn.disabled = false;
+		startBtn.disabled = true; // block starting analysis for too-long articles
 	} else {
 		render.clearLongArticleWarning();
 		startBtn.disabled = false;
