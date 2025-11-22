@@ -1,6 +1,6 @@
 import type { LogEntry } from '../types';
 
-const API_URL = 'http://localhost:3000/api/logs';
+const API_URL = '/api/logs';
 
 export async function fetchLogs(): Promise<LogEntry[]> {
   try {
