@@ -22,25 +22,57 @@ function getAuthHeaders(): Record<string, string> | undefined {
 	if (serverAddress.startsWith("https://")) {
 		return { Authorization: "Basic " + btoa(`${process.env.SERVER_USER}:${process.env.SERVER_PASS}`) };
 	}
-	return undefined;
+
+	return {};
 }
 
-export async function runJob(options: RunJobOptions = {}): Promise<void> {
-	const resolvedContext = options.context ?? buildDocumentContext();
-	// Prefer explicit text provided in options; otherwise use the resolved context.
-	// If the article text is very long (more than 300 sentences) truncate the
-	// content sent to the server to the first 299 sentences to avoid huge payloads.
-	let pageContent = typeof options.text === "string" ? options.text : resolvedContext.html;
+async function fetchServerLimit(): Promise<number> {
+	return new Promise((resolve, reject) => {
+		chrome.runtime.sendMessage({ type: "getServerLimit" }, resp => {
+			if (resp?.max_sentences == null) {
+				return reject(new Error("Failed to get server limit"));
+			}
 
+			resolve(resp?.max_sentences);
+		});
+	});
+}
+
+async function limitPayload(textForCounting: string): Promise<string> {
 	// Helper: protect dots in common abbreviations and numeric decimals so we don't
 	// split sentences inside abbreviations (simple heuristic similar to popup util).
 	function protectDots(text: string): string {
 		if (!text) return "";
 		let result = text;
 		const PROTECTED = [
-			"dr", "inż", "mgr", "prof", "hab", "dot", "s", "ul", "al", "ks",
-			"pl", "ppłk", "płk", "gen", "mjr", "por", "ppor", "kpt", "st",
-			"plk", "św", "r", "tyś", "tys", "mln", "mld", "oprac", "prok"
+			"dr",
+			"inż",
+			"mgr",
+			"prof",
+			"hab",
+			"dot",
+			"s",
+			"ul",
+			"al",
+			"ks",
+			"pl",
+			"ppłk",
+			"płk",
+			"gen",
+			"mjr",
+			"por",
+			"ppor",
+			"kpt",
+			"st",
+			"plk",
+			"św",
+			"r",
+			"tyś",
+			"tys",
+			"mln",
+			"mld",
+			"oprac",
+			"prok"
 		];
 		for (const abbr of PROTECTED) {
 			const re = new RegExp("\\b" + abbr.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\$&") + "\\.(?=\\s|$)", "gi");
@@ -82,18 +114,22 @@ export async function runJob(options: RunJobOptions = {}): Promise<void> {
 		return res;
 	}
 
-	const textForCounting = typeof options.text === "string" ? options.text : resolvedContext.text;
-	// Default limit; consult background cache first (background fetches once at startup)
-	let MAX_SENTENCES = 300;
 	try {
-		const cached = await new Promise(resolve => {
-			chrome.runtime.sendMessage({ type: "getServerLimit" }, resp => resolve(resp?.max_sentences ?? null));
-		});
-		if (cached && Number.isFinite(cached)) {
-			MAX_SENTENCES = Number(cached);
-		}
+		const limit = await fetchServerLimit();
+		// TODO: actually limit/truncate text
+		return textForCounting;
 	} catch (e) {
+		console.warn("Failed to fetch server limit. Content not truncated.");
+		return textForCounting;
 	}
+}
+
+export async function runJob(options: RunJobOptions = {}): Promise<void> {
+	const resolvedContext = options.context ?? buildDocumentContext();
+	// Prefer explicit text provided in options; otherwise use the resolved context.
+	let pageContent = typeof options.text === "string" ? options.text : resolvedContext.html;
+	pageContent = await limitPayload(pageContent);
+
 	const title = options.meta?.title ?? resolvedContext.title ?? null;
 	const url = options.meta?.url ?? (typeof location !== "undefined" ? location.href : null);
 	const language = navigator?.language?.split("-")[0] ?? "en";
@@ -179,22 +215,3 @@ export default {
 	runJob,
 	serverAddress
 };
-
-export async function fetchServerLimit(): Promise<number | null> {
-	if (!serverAddress) return null;
-	try {
-		const res = await fetch(`${serverAddress}/limit`, {
-			method: "GET",
-			headers: {
-				...(getAuthHeaders() ?? {})
-			}
-		});
-		if (!res.ok) return null;
-		const data = await res.json().catch(() => ({}));
-		const parsed = Number(data?.max_sentences);
-		if (!Number.isNaN(parsed) && parsed > 0) return parsed;
-	} catch (e) {
-		console.warn("fetchServerLimit error:", e);
-	}
-	return null;
-}
