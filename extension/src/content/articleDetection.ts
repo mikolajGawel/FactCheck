@@ -33,7 +33,7 @@ export function findArticleTitle(articleNode: HTMLElement): string | null {
 
 	return null;
 }
-const minimalSentencesInArticle = 4;
+const minimalSentencesCount = 4;
 export function collectArticles(): ArticleSummary[] {
 	const nodes = getArticleNodes();
 	const out: ArticleSummary[] = [];
@@ -43,7 +43,7 @@ export function collectArticles(): ArticleSummary[] {
 		const text = snapshot.text || "";
 		const sentences = countSentences(text);
 		// Only include articles with at least 4 sentences
-		if (minimalSentencesInArticle >= 4) {
+		if (minimalSentencesCount >= 4) {
 			const snippet = text.slice(0, 200).replace(/\s+/g, " ");
 			out.push({ id: idx, title, snippet });
 		}

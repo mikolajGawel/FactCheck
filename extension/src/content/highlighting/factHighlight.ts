@@ -2,11 +2,213 @@ import type { HighlightContext, TextPointer } from "../articleScraper";
 import type { HighlightSpan, HighlightResult } from "../../types/highlightTypes";
 import { ensureTooltip, attachTooltip, hideTooltip } from "./highlightTooltip";
 
-const TYPE_COLORS: Record<string, string> = {
-	fact: "#c8f7c5",
-	opinion: "#f7c5c5",
-	uncertain: "#0000000b"// brak koloru bardziej pokazuje brak opinii
+const TYPE_COLORS: Record<string, { light: string; dark: string }> = {
+	fact: { light: "#c8f7c5", dark: "#2b5f33" },
+	opinion: { light: "#f7c5c5", dark: "#5f2b2b" },
+	uncertain: { light: "#0000000b", dark: "#ffffff14" } // brak koloru bardziej pokazuje brak opinii
 };
+
+let __cachedPageDarkMode: boolean | null = null;
+let __highlightBgObserver: MutationObserver | null = null;
+let __bgChangeTimeout: number | null = null;
+let __matchMediaQuery: MediaQueryList | null = null;
+let __matchMediaListener: ((e: MediaQueryListEvent) => void) | null = null;
+let __lastIsDark: boolean | null = null;
+
+function parseRGB(color: string): [number, number, number, number] | null {
+	if (!color) return null;
+	const temp = document.createElement("div");
+	temp.style.color = color;
+	temp.style.display = "none";
+	document.documentElement.appendChild(temp);
+	const cs = getComputedStyle(temp).color;
+	document.documentElement.removeChild(temp);
+	const m = cs.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([0-9.]+))?\)/);
+	if (!m) return null;
+	return [parseInt(m[1], 10), parseInt(m[2], 10), parseInt(m[3], 10), m[4] ? parseFloat(m[4]) : 1];
+}
+
+function relativeLuminance([r, g, b]: [number, number, number]): number {
+	const srgb = [r, g, b].map(v => v / 255).map(v => (v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4)));
+	return 0.2126 * srgb[0] + 0.7152 * srgb[1] + 0.0722 * srgb[2];
+}
+
+function getEffectivePageBackgroundColor(): string {
+	const body = document.body;
+	const candidates = [body, document.documentElement];
+	for (const el of candidates) {
+		if (!el) continue;
+		const cs = getComputedStyle(el).backgroundColor;
+		if (cs && cs !== "transparent" && cs !== "rgba(0, 0, 0, 0)") {
+			return cs;
+		}
+	}
+	return getComputedStyle(document.documentElement).backgroundColor || "rgb(255, 255, 255)";
+}
+
+function detectPageDarkMode(): boolean {
+	if (__cachedPageDarkMode !== null) return __cachedPageDarkMode;
+
+	try {
+		const bg = getEffectivePageBackgroundColor();
+		const parsed = parseRGB(bg);
+		if (parsed) {
+			// If background has transparency, prefer prefers-color-scheme instead
+			const alpha = parsed[3] ?? 1;
+			if (alpha < 0.6) {
+				// treat as unknown and fall through to prefers-color-scheme
+			} else {
+				// Use a slightly higher luminance threshold so "dark" (not only black)
+				// backgrounds are detected as dark. 0.6 covers moderately dark backgrounds.
+				const lum = relativeLuminance([parsed[0], parsed[1], parsed[2]]);
+				__cachedPageDarkMode = lum < 0.6;
+				return __cachedPageDarkMode;
+			}
+		}
+	} catch (e) {
+		// ignore and fall back
+	}
+
+	// If top-level backgrounds were transparent or inconclusive, try sampling
+	// the element at the center of the viewport and walk up to find a real background.
+	try {
+		const cx = Math.round((window.innerWidth || document.documentElement.clientWidth) / 2);
+		const cy = Math.round((window.innerHeight || document.documentElement.clientHeight) / 2);
+		const el = document.elementFromPoint(cx, cy) as Element | null;
+		if (el) {
+			let walker: Element | null = el;
+			while (walker) {
+				const cs = getComputedStyle(walker).backgroundColor;
+				if (cs && cs !== "transparent" && cs !== "rgba(0, 0, 0, 0)") {
+					const parsed2 = parseRGB(cs);
+					if (parsed2) {
+						const alpha2 = parsed2[3] ?? 1;
+						if (alpha2 >= 0.6) {
+							const lum2 = relativeLuminance([parsed2[0], parsed2[1], parsed2[2]]);
+							__cachedPageDarkMode = lum2 < 0.6;
+							return __cachedPageDarkMode;
+						}
+					}
+				}
+				walker = walker.parentElement;
+			}
+		}
+	} catch (e) {
+		// ignore
+	}
+
+	if (typeof window !== "undefined" && (window as any).matchMedia) {
+		try {
+			__cachedPageDarkMode = !!window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+			return __cachedPageDarkMode;
+		} catch (e) {
+			// ignore
+		}
+	}
+
+	__cachedPageDarkMode = false;
+	return __cachedPageDarkMode;
+}
+
+function colorStringToRGBTuple(colorStr: string): [number, number, number] | null {
+	const parsed = parseRGB(colorStr);
+	if (!parsed) return null;
+	return [parsed[0], parsed[1], parsed[2]];
+}
+
+
+function updateHighlights(isDark: boolean): void {
+	const highlightedSpans = document.querySelectorAll<HTMLElement>("span[data-factcheck-highlight]");
+	highlightedSpans.forEach(el => {
+		const typeKey = el.dataset.type ?? "fact";
+		const typeEntry = TYPE_COLORS[typeKey];
+		const color = typeEntry ? (isDark ? typeEntry.dark : typeEntry.light) : "#00000000";
+		el.style.backgroundColor = color;
+	});
+}
+
+function startBackgroundChangeListener(): void {
+	// stop previous to avoid duplicates
+	stopBackgroundChangeListener();
+
+	try {
+		__lastIsDark = detectPageDarkMode();
+
+		__highlightBgObserver = new MutationObserver(() => {
+			if (__bgChangeTimeout != null) {
+				clearTimeout(__bgChangeTimeout);
+			}
+			__bgChangeTimeout = window.setTimeout(() => {
+				__cachedPageDarkMode = null;
+				const newIsDark = detectPageDarkMode();
+				if (newIsDark !== __lastIsDark) {
+					__lastIsDark = newIsDark;
+					updateHighlights(newIsDark);
+				}
+			}, 80);
+		});
+
+		// Observe changes that commonly affect page background / theme
+		const observeTarget1 = document.documentElement;
+		const observeTarget2 = document.body || null;
+
+		const opts: MutationObserverInit = { attributes: true, attributeFilter: ["class", "style"], subtree: true, childList: false };
+
+		if (observeTarget1) __highlightBgObserver.observe(observeTarget1, opts);
+		if (observeTarget2) __highlightBgObserver.observe(observeTarget2, opts);
+
+		// Listen to prefers-color-scheme changes as well
+		if (typeof window !== "undefined" && (window as any).matchMedia) {
+			try {
+				__matchMediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+				__matchMediaListener = (e: MediaQueryListEvent) => {
+					__cachedPageDarkMode = null;
+					const newIsDark = !!e.matches;
+					if (newIsDark !== __lastIsDark) {
+						__lastIsDark = newIsDark;
+						updateHighlights(newIsDark);
+					}
+				};
+				// modern API
+				if (typeof __matchMediaQuery.addEventListener === "function") {
+					__matchMediaQuery.addEventListener("change", __matchMediaListener as any);
+				} else if (typeof __matchMediaQuery.addListener === "function") {
+					// older API
+					(__matchMediaQuery as any).addListener(__matchMediaListener);
+				}
+			} catch (e) {
+				// ignore
+			}
+		}
+	} catch (e) {
+		// ignore any errors here to avoid breaking page scripts
+	}
+}
+
+function stopBackgroundChangeListener(): void {
+	try {
+		if (__highlightBgObserver) {
+			__highlightBgObserver.disconnect();
+			__highlightBgObserver = null;
+		}
+		if (__bgChangeTimeout != null) {
+			clearTimeout(__bgChangeTimeout);
+			__bgChangeTimeout = null;
+		}
+		if (__matchMediaQuery && __matchMediaListener) {
+			if (typeof __matchMediaQuery.removeEventListener === "function") {
+				__matchMediaQuery.removeEventListener("change", __matchMediaListener as any);
+			} else if (typeof (__matchMediaQuery as any).removeListener === "function") {
+				(__matchMediaQuery as any).removeListener(__matchMediaListener);
+			}
+		}
+		__matchMediaQuery = null;
+		__matchMediaListener = null;
+		__lastIsDark = null;
+	} catch (e) {
+		// ignore
+	}
+}
 
 export function removeHighlights(): void {
 	const highlightedSpans = document.querySelectorAll<HTMLElement>("span[data-factcheck-highlight]");
@@ -19,9 +221,14 @@ export function removeHighlights(): void {
 		span.remove();
 	});
 	hideTooltip();
+
+	// stop listening for background / theme changes when highlights are removed
+	stopBackgroundChangeListener();
 }
 
 export function highlightText(result: HighlightResult | null | undefined, context?: HighlightContext): void {
+	// Recompute dark mode per-run to avoid stale cached value across pages
+	__cachedPageDarkMode = null;
 	if (!result || !Array.isArray(result.spans) || result.spans.length === 0 || !context || !context.pointers?.length) {
 		removeHighlights();
 		return;
@@ -42,6 +249,9 @@ export function highlightText(result: HighlightResult | null | undefined, contex
 			attachTooltip(highlight, span);
 		}
 	}
+
+	// Start listening for background / theme changes so highlight colors update
+	startBackgroundChangeListener();
 }
 
 function isValidSpan(span: HighlightSpan): boolean {
@@ -90,7 +300,10 @@ function createRangeFromPointers(pointers: TextPointer[], start: number, end: nu
 }
 
 function wrapRange(range: Range, span: HighlightSpan): HTMLElement[] {
-	const color = TYPE_COLORS[span.type ?? "fact"] ?? "#00000000";
+	const typeKey = span.type ?? "fact";
+	const typeEntry = TYPE_COLORS[typeKey];
+	const isDark = detectPageDarkMode();
+	const color = typeEntry ? (isDark ? typeEntry.dark : typeEntry.light) : "#00000000";
 
 	const BLOCK_TAGS = new Set([
 		"ADDRESS",
