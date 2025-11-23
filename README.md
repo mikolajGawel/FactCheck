@@ -1,24 +1,30 @@
 # Factcheck 
-Wtyczka do przeglądarki chrome pozwalająca na analizę treści stron z informacjiami. \
-Pozwala stwierdzić czy podany test jest faktem czy opinią w tym celu wykorzystuje sztuczną inteligencję. \
-Naszym celem jest walka z fake newsami oraz dezinformacją, która jest coraz bardziej szerzona przez media. \
-Wtyczka ma być swego rodzajem lupą analityczną która przetwarza dokument aby użytkownik otrzymał nie stronnicze dane. \
+Wtyczka do przeglądarki chrome pozwalająca na analizę treści artykułów informacjnych. \
+Pozwala stwierdzić czy podany tekst jest faktem czy opinią - w tym celu wykorzystuje sztuczną inteligencję. \
+Naszym celem jest walka z fake newsami oraz dezinformacją, która jest coraz bardziej powszechna w mediach. \
+Wtyczka ma być swego rodzaju lupą analityczną, która przetwarza dokument aby użytkownik otrzymał nie stronnicze dane. \
 Projekt został utworzony przez:
  - Mikołaja Gaweł-Kucab 
  - Wiktora Golicza 
 
 na konkurs Hack Heroes 2025.
 ## Działanie wtyczki
-Aby użyć wtyczki należy wejść na dowolny artykuł na stronie z wiadomościami np: https://www.wp.pl/ \
-kliknąć w rozszerzenia kliknąć wtyczkę FactCheck należy wybrać artykuł we wtyczce \
-po czym wcisnąć przycisk rozpocznij analizę, ze wzgledu na użycie modelu AI powinno to zająć około ~30s. w zależności od długości artykułu\
-w przypadku braku artykułu wtyczka będzie wyświetlać komunikat o braku artykułu na danej stronie.\
+Aby użyć wtyczki należy wejść na dowolny artykuł na stronie z wiadomościami np: wp.pl/ \
+następnie kliknąć w rozszerzenia i wybrać wtyczkę FactCheck. \
+W wtyczce należy wybrać artykuł po czym wcisnąć przycisk rozpocznij analizę. \
+Ze wzgledu na użycie modelu AI powinno to zająć około ~20s. - w zależności od długości artykułu.\
+W przypadku gdy na stronie nie wykryło artykułu wtyczka będzie wyświetlać odpowiedni komunikat.\
 Po zakończonej analizie części artykułu zostaną pozaznaczane na 3 kolory: 
  - czerwony: opinia, specyficzna perspektywa
  - zielony: fakt, informacja
- - szary: niepewne, nie zakwalifikowane
+ - szary: niepewne, niezakwalifikowane
 ## Demonstracja działania rozszerzenia
 ![preview](./preview/preview.gif)
+## Dodatkowa fukncjonalność
+ - Wsparcie dla jasnego i ciemnego trybu artykułu
+ - Cache przeanalizowanych dokumentów w celu zapobiegania ponownej analizie tego samego artykułu
+ - Podpowiedzi określające czemu dana część artykułu jest oceniona jako fakt albo opinia
+ - Pasek progresu wraz z przewidywanym czasem oczekiwania
 ## Uruchmienie wtyczki
 1. Pierwszym krokiem jest pobranie gotowej wersji(rekomendowane) wtyczki albo zkompilowanie własnej z kodu źródłowego
 2. Aby uruchomić wtyczkę należy wejść w kartę rozszerzeń w przeglądarce Google Chrome wpisując w pasek adresu: `chrome://extensions/`
