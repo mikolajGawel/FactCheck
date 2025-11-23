@@ -50,60 +50,24 @@ function detectPageDarkMode(): boolean {
 	if (__cachedPageDarkMode !== null) return __cachedPageDarkMode;
 
 	try {
-		const bg = getEffectivePageBackgroundColor();
+		const body = document.body;
+		if (!body) {
+			__cachedPageDarkMode = false;
+			return __cachedPageDarkMode;
+		}
+
+		const bg = getComputedStyle(body).backgroundColor;
 		const parsed = parseRGB(bg);
 		if (parsed) {
-			// If background has transparency, prefer prefers-color-scheme instead
 			const alpha = parsed[3] ?? 1;
-			if (alpha < 0.6) {
-				// treat as unknown and fall through to prefers-color-scheme
-			} else {
-				// Use a slightly higher luminance threshold so "dark" (not only black)
-				// backgrounds are detected as dark. 0.6 covers moderately dark backgrounds.
+			if (alpha >= 0.6) {
 				const lum = relativeLuminance([parsed[0], parsed[1], parsed[2]]);
 				__cachedPageDarkMode = lum < 0.6;
 				return __cachedPageDarkMode;
 			}
 		}
 	} catch (e) {
-		// ignore and fall back
-	}
-
-	// If top-level backgrounds were transparent or inconclusive, try sampling
-	// the element at the center of the viewport and walk up to find a real background.
-	try {
-		const cx = Math.round((window.innerWidth || document.documentElement.clientWidth) / 2);
-		const cy = Math.round((window.innerHeight || document.documentElement.clientHeight) / 2);
-		const el = document.elementFromPoint(cx, cy) as Element | null;
-		if (el) {
-			let walker: Element | null = el;
-			while (walker) {
-				const cs = getComputedStyle(walker).backgroundColor;
-				if (cs && cs !== "transparent" && cs !== "rgba(0, 0, 0, 0)") {
-					const parsed2 = parseRGB(cs);
-					if (parsed2) {
-						const alpha2 = parsed2[3] ?? 1;
-						if (alpha2 >= 0.6) {
-							const lum2 = relativeLuminance([parsed2[0], parsed2[1], parsed2[2]]);
-							__cachedPageDarkMode = lum2 < 0.6;
-							return __cachedPageDarkMode;
-						}
-					}
-				}
-				walker = walker.parentElement;
-			}
-		}
-	} catch (e) {
-		// ignore
-	}
-
-	if (typeof window !== "undefined" && (window as any).matchMedia) {
-		try {
-			__cachedPageDarkMode = !!window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
-			return __cachedPageDarkMode;
-		} catch (e) {
-			// ignore
-		}
+		// ignore and fall back to false
 	}
 
 	__cachedPageDarkMode = false;
