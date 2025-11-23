@@ -1,7 +1,6 @@
 /// <reference types="chrome" />
 
 import type { HighlightContext } from "../articleScraper";
-import { buildDocumentContext } from "../articleScraper";
 import { highlightText } from "../highlighting/factHighlight";
 
 const serverAddress = process.env.SERVER ?? "";
@@ -13,9 +12,9 @@ export interface JobMeta {
 }
 
 export interface RunJobOptions {
-	text?: string;
-	meta?: JobMeta;
-	context?: HighlightContext;
+	text: string;
+	meta: JobMeta;
+	context: HighlightContext;
 }
 
 function getAuthHeaders(): Record<string, string> | undefined {
@@ -124,11 +123,9 @@ async function limitPayload(textForCounting: string): Promise<string> {
 	}
 }
 
-export async function runJob(options: RunJobOptions = {}): Promise<void> {
-	const resolvedContext = options.context ?? buildDocumentContext();
-	// Prefer explicit text provided in options; otherwise use the resolved context.
-	let pageContent = typeof options.text === "string" ? options.text : resolvedContext.html;
-	pageContent = await limitPayload(pageContent);
+export async function runJob(options: RunJobOptions): Promise<void> {
+	const resolvedContext = options.context;
+	const truncatedPageContent = await limitPayload(options.text);
 
 	const title = options.meta?.title ?? resolvedContext.title ?? null;
 	const url = options.meta?.url ?? (typeof location !== "undefined" ? location.href : null);
@@ -136,25 +133,7 @@ export async function runJob(options: RunJobOptions = {}): Promise<void> {
 
 	let job_id: string | null = null;
 	try {
-		const start = await fetch(`${serverAddress}/start`, {
-			method: "POST",
-			headers: {
-				"Content-Type": "application/json",
-				...getAuthHeaders()
-			},
-			body: JSON.stringify({ content: pageContent, title, url, language })
-		});
-
-		if (!start.ok) {
-			const errorText = await start.text().catch(() => "(no body)");
-			const message = `Server failed to start job: ${start.status} ${errorText}`;
-			console.error("Server start failed:", message);
-			chrome.runtime.sendMessage({ type: "jobFailed", error: message });
-			return;
-		}
-
-		const body = await start.json();
-		job_id = body.job_id;
+		job_id = await startJob(truncatedPageContent, title, url, language);
 	} catch (err: unknown) {
 		const message = err && typeof err === "object" && "message" in err ? (err as any).message : String(err);
 		console.error("Server start failed:", message);
@@ -162,8 +141,41 @@ export async function runJob(options: RunJobOptions = {}): Promise<void> {
 		return;
 	}
 
+	try {
+		await waitForJobEnd(job_id, resolvedContext, options.meta);
+	} catch (err: unknown) {
+		const message = err && typeof err === "object" && "message" in err ? (err as any).message : String(err);
+		console.error("Job failed:", message);
+		chrome.runtime.sendMessage({ type: "jobFailed", error: message });
+	}
+}
+
+async function startJob(content: string, title: string | null, url: string | null, language: string): Promise<string> {
+	const start = await fetch(`${serverAddress}/start`, {
+		method: "POST",
+		headers: {
+			"Content-Type": "application/json",
+			...getAuthHeaders()
+		},
+		body: JSON.stringify({ content, title, url, language })
+	});
+
+	if (!start.ok) {
+		const errorText = await start.text().catch(() => "(no body)");
+		throw new Error(`Server failed to start job: ${start.status} ${errorText}`);
+	}
+
+	const body = await start.json();
+	if (!body?.job_id) {
+		throw new Error("Server did not return job_id");
+	}
+	return body.job_id;
+}
+
+async function waitForJobEnd(job_id: string, resolvedContext: HighlightContext, meta?: JobMeta): Promise<void> {
 	let done = false;
-	let jobError = null;
+	let jobError: string | null = null;
+
 	while (!done) {
 		try {
 			const statusRes = await fetch(`${serverAddress}/status?id=${job_id}`, {
@@ -182,8 +194,8 @@ export async function runJob(options: RunJobOptions = {}): Promise<void> {
 				console.log("Wynik:", status.result);
 				chrome.runtime.sendMessage({
 					type: "jobCompleted",
-					articleId: options.meta?.articleId,
-					url: options.meta?.url
+					articleId: meta?.articleId,
+					url: meta?.url
 				});
 				done = true;
 			} else if (status.status === "failed" || status.status === "error") {
@@ -200,9 +212,7 @@ export async function runJob(options: RunJobOptions = {}): Promise<void> {
 		}
 	}
 
-	if (jobError) {
-		chrome.runtime.sendMessage({ type: "jobFailed", error: jobError });
-	}
+	if (jobError) throw new Error(jobError);
 }
 
 function sleep(ms: number): Promise<void> {
@@ -210,8 +220,4 @@ function sleep(ms: number): Promise<void> {
 }
 
 export { serverAddress };
-
-export default {
-	runJob,
-	serverAddress
-};
+export default { runJob, serverAddress };
