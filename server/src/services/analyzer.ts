@@ -1,7 +1,12 @@
 import OpenAI from "openai";
 import { AnalyzerResultSchema, SentenceLLMResponseSchema } from "../schemas/jobSchemas.js";
 import { logAICall } from "./logger.js";
-import { limitSentences, segmentSentencesWithStructure, parseHtmlToBlocks } from "../utils/textUtils.js";
+import {
+	limitSentences,
+	segmentSentencesWithStructure,
+	parseHtmlToBlocks,
+	reconstructTextFromBlocks
+} from "../utils/textUtils.js";
 import { escapeDangerousContent } from "../utils/sanitize.js";
 import { extractJsonObject, stringifyForPrompt } from "../utils/jsonUtils.js";
 import utils from "util";
@@ -33,7 +38,7 @@ function getOpenRouterClient() {
 		baseURL: process.env.OPENROUTER_BASE_URL,
 		defaultHeaders: {
 			"HTTP-Referer": process.env.OPENROUTER_SITE_URL,
-			"X-Title": process.env.OPENROUTER_APP_NAME 
+			"X-Title": process.env.OPENROUTER_APP_NAME
 		}
 	});
 
@@ -66,6 +71,9 @@ export async function analyzeArticleSentences(payload, _context?) {
 	const llmResponse = await classifySentencesWithLLM(limitedSentences, { title, language, url });
 	const spans = buildSpansFromClassification(limitedSentences, llmResponse.sentences);
 
+	// For debugging: reconstruct the full extracted text so frontend can validate alignment
+	const extractedText = reconstructTextFromBlocks(textBlocks);
+
 	const analyzerResult = {
 		document: {
 			title,
@@ -76,7 +84,9 @@ export async function analyzeArticleSentences(payload, _context?) {
 		summary: escapeDangerousContent(llmResponse.summary ?? null),
 		spans,
 		metadata: {
-			truncated: allSentences.length > limitedSentences.length
+			truncated: allSentences.length > limitedSentences.length,
+			// Include extracted text for frontend validation (can remove in production)
+			extractedText: process.env.NODE_ENV === "development" ? extractedText : undefined
 		}
 	};
 
@@ -98,9 +108,7 @@ async function classifySentencesWithLLM(sentences, metadata) {
 	aiProcessingCount++;
 	try {
 		// Exclude sentences marked as skipAI (e.g. anchors outside <p>) but keep ids
-		const payload = sentences
-			.filter(s => !s.skipAI)
-			.map(({ id, text }) => ({ id, text }));
+		const payload = sentences.filter(s => !s.skipAI).map(({ id, text }) => ({ id, text }));
 
 		const instructions = [
 			{
@@ -130,9 +138,9 @@ async function classifySentencesWithLLM(sentences, metadata) {
 
 		new Promise(resolve => setTimeout(resolve, 3000)).then(() => {
 			console.log("Logging AI call with generation ID:", completion.id);
-			logAICall(completion.id, { 
-				url: metadata.url, 
-				article_title: metadata.title 
+			logAICall(completion.id, {
+				url: metadata.url,
+				article_title: metadata.title
 			});
 		});
 

@@ -2,6 +2,7 @@
 
 import type { HighlightContext } from "../articleScraper";
 import { highlightText } from "../highlighting/factHighlight";
+import { validateTextAlignment } from "../textSnapshot";
 
 const serverAddress = process.env.SERVER ?? "";
 
@@ -190,6 +191,14 @@ async function waitForJobEnd(job_id: string, resolvedContext: HighlightContext, 
 
 			const status = await statusRes.json();
 			if (status.status === "done") {
+				// Validate text alignment if backend sent extracted text (development mode)
+				if (status.result?.metadata?.extractedText) {
+					const isAligned = validateTextAlignment(resolvedContext.text, status.result.metadata.extractedText);
+					if (!isAligned) {
+						console.warn("[FactCheck] Text misalignment detected - highlights may be incorrect!");
+					}
+				}
+
 				highlightText(status.result, resolvedContext);
 				console.log("Wynik:", status.result);
 				chrome.runtime.sendMessage({

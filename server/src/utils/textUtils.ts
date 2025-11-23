@@ -1,6 +1,24 @@
 import * as cheerio from "cheerio";
 import { normalizeText, DEFAULT_NOISE_SELECTORS } from "./textProcessing.js";
 
+/**
+ * Text extraction and sentence segmentation for fact-checking.
+ *
+ * CRITICAL ALIGNMENT REQUIREMENT:
+ * The text extracted here MUST exactly match what the frontend extracts via
+ * extension/src/content/textSnapshot.ts to ensure highlight offsets are correct.
+ *
+ * Skip behavior (both sides must match):
+ * - COMPLETELY SKIP (no text extraction):
+ *   - Tags: script, style, nav, aside, footer, header, figure, iframe,
+ *     noscript, template, button, time, form, meta, head, link, br
+ *   - Elements with: [hidden], [aria-hidden="true"], [data-factcheck-ignore]
+ *
+ * - INCLUDE TEXT but mark skipAI=true (excluded from AI analysis only):
+ *   - <a> tags outside of <p> tags (navigation links, menus, etc.)
+ *   - These are included to maintain offset alignment with frontend
+ */
+
 // --- Konfiguracja ---
 
 const BLOCK_TAGS = new Set([
@@ -172,14 +190,15 @@ export function parseHtmlToBlocks(html: string): TextBlock[] {
 			if (IGNORED_TAGS.has(tagName)) return;
 			if (tagName === "br") return;
 
-			// Ignore <a> tags that are not inside a paragraph (`<p>`).
+			// Handle <a> tags: include text but mark for AI skipping if outside paragraphs.
+			// This ensures offset alignment - frontend includes this text, backend must too.
 			// Only allow traversing anchors when their parent or grandparent is a <p>.
 			let nextSkipAI = skipAIForNode;
 			if (tagName === "a") {
 				const parentTag = path.length ? getTagNameFromPathEntry(path[path.length - 1]) : "";
 				const grandParentTag = path.length > 1 ? getTagNameFromPathEntry(path[path.length - 2]) : "";
 				if (parentTag !== "p" && grandParentTag !== "p") {
-					// Mark this anchor and its children as skipped for AI, but still traverse
+					// Mark for AI skip but INCLUDE the text (for offset alignment)
 					nextSkipAI = true;
 				}
 			}
@@ -220,6 +239,41 @@ export function parseHtmlToBlocks(html: string): TextBlock[] {
 	root.contents().each((i, node) => traverse(node, [], false));
 
 	return normalizeBlocks(blocks);
+}
+
+/**
+ * Debug helper: Reconstruct the full text from blocks (as it would be seen for offsets).
+ * This is useful for validating alignment with frontend text extraction.
+ *
+ * @param blocks - Text blocks from parseHtmlToBlocks
+ * @returns The concatenated and normalized text that sentences reference via offsets
+ */
+export function reconstructTextFromBlocks(blocks: TextBlock[]): string {
+	if (!blocks || blocks.length === 0) return "";
+
+	// Simulate the same normalization that happens in segmentSentencesWithStructure
+	let text = "";
+	let pendingSpace = false;
+	let hasOutput = false;
+
+	for (const block of blocks) {
+		for (const char of block.text) {
+			if (/[\s\u00a0]/.test(char)) {
+				if (hasOutput) {
+					pendingSpace = true;
+				}
+			} else {
+				if (pendingSpace) {
+					text += " ";
+					pendingSpace = false;
+				}
+				text += char;
+				hasOutput = true;
+			}
+		}
+	}
+
+	return text;
 }
 
 function normalizeBlocks(rawBlocks: TextBlock[]): TextBlock[] {
