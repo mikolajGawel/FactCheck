@@ -3,7 +3,9 @@ import { HIGHLIGHT_IGNORE_SELECTOR } from "./constants";
 import { ArticleSummary } from "../types/highlightTypes";
 
 export function getArticleNodes(): HTMLElement[] {
-	return Array.from(document.querySelectorAll<HTMLElement>("article"));
+	const articles = Array.from(document.querySelectorAll<HTMLElement>("article"));
+	if (articles.length > 0) return articles;
+	return Array.from(document.querySelectorAll<HTMLElement>(".articleBody"));
 }
 
 export function findArticleTitle(articleNode: HTMLElement): string | null {
