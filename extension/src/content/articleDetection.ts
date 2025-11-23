@@ -41,12 +41,12 @@ export function collectArticles(): ArticleSummary[] {
 		const title = findArticleTitle(node) ?? `Article ${idx + 1}`;
 		const snapshot = createTextSnapshot(node, HIGHLIGHT_IGNORE_SELECTOR);
 		const text = snapshot.text || "";
-		const sentences = countSentences(text);
-		// Only include articles with at least 4 sentences
-		if (minimalSentencesCount >= 4) {
-			const snippet = text.slice(0, 200).replace(/\s+/g, " ");
-			out.push({ id: idx, title, snippet });
-		}
+			const sentences = countSentences(text);
+			// Only include articles with at least `minimalSentencesCount` sentences
+			if (sentences >= minimalSentencesCount) {
+				const snippet = text.slice(0, 200).replace(/\s+/g, " ");
+				out.push({ id: idx, title, snippet });
+			}
 	});
 	return out;
 }
