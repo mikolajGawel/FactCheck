@@ -6,10 +6,6 @@
 // CONFIGURATION
 $TARGET_BASE = 'http://91.123.179.17:6767';
 
-// Basic Auth credentials
-$AUTH_USER = 'extension';
-$AUTH_PASS = '?w_@l(J>H6Q5/u`%fc"2_cD5N78Z4c>';
-
 // -------------------------------
 // CORS HELPERS & PRE-FLIGHT
 // -------------------------------
@@ -54,6 +50,59 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
     // No body for preflight
     http_response_code(204);
+    exit;
+}
+
+// -------------------------------
+// LOAD AUTH CREDENTIALS FROM .env
+// -------------------------------
+function load_env_file(string $path): array|false {
+    if (!is_readable($path)) {
+        return false;
+    }
+    $lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    if ($lines === false) {
+        return false;
+    }
+    $env = [];
+    foreach ($lines as $line) {
+        $line = trim($line);
+        if ($line === '' || $line[0] === '#' || $line[0] === ';') {
+            continue;
+        }
+        if (strpos($line, '=') === false) {
+            continue;
+        }
+        [$k, $v] = explode('=', $line, 2);
+        $k = trim($k);
+        $v = trim($v);
+        // strip surrounding single/double quotes if present
+        if ((substr($v, 0, 1) === '"' && substr($v, -1) === '"') ||
+            (substr($v, 0, 1) === "'" && substr($v, -1) === "'")) {
+            $v = substr($v, 1, -1);
+        }
+        $env[$k] = $v;
+    }
+    return $env;
+}
+
+$envPath = dirname(__FILE__) . '/.env';
+$env = load_env_file($envPath);
+if ($env === false) {
+    // Could not load .env — reject all requests
+    set_cors_headers();
+    header('HTTP/1.1 503 Service Unavailable');
+    echo 'Service Unavailable';
+    exit;
+}
+
+$AUTH_USER = $env['AUTH_USER'] ?? null;
+$AUTH_PASS = $env['AUTH_PASS'] ?? null;
+if ($AUTH_USER === null || $AUTH_PASS === null) {
+    // Missing required keys — reject all requests
+    set_cors_headers();
+    header('HTTP/1.1 503 Service Unavailable');
+    echo 'Service Unavailable';
     exit;
 }
 
