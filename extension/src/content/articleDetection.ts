@@ -90,14 +90,6 @@ export function findArticleTitle(articleNode: HTMLElement): string | null {
 	const dataTitle = articleNode.getAttribute("data-title");
 	if (dataTitle) return dataTitle.trim();
 
-	const strong = articleNode.querySelector<HTMLElement>("strong, b");
-	if (strong) {
-		const value = strong.innerText.trim();
-		if (value) {
-			return value;
-		}
-	}
-
 	return null;
 }
 const minimalSentencesCount = 4;
