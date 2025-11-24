@@ -1,8 +1,9 @@
 import { createTextSnapshot } from "./textSnapshot";
 import { HIGHLIGHT_IGNORE_SELECTOR } from "./constants";
-import { getArticleNodes, findArticleTitle } from "./articleDetection";
+import { getArticleNodes } from "./detection";
 import { normalizeText } from "./textProcessing";
 import { HighlightContext, HighlightSource } from "../types/highlightTypes";
+import { findArticleTitle } from "./detection/titleUtils";
 
 // These tags never contribute to canonical text (see docs) but inflate payload size,
 // so we physically remove them before sending HTML to the backend.
