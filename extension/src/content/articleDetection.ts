@@ -39,6 +39,23 @@ export function getArticleNodes(): HTMLElement[] {
         return nodes.filter(n => !nodes.some(other => other !== n && other.contains(n)));
     }
 
+    // Site-specific heuristics
+    function isTvn24Page(): boolean {
+        try {
+            return typeof location !== 'undefined' && !!location.hostname && location.hostname.includes('tvn24');
+        } catch (e) {
+            return false;
+        }
+    }
+
+    // TVN24: prefer the document <main> as the article root when available
+    if (isTvn24Page()) {
+        const main = document.querySelector<HTMLElement>('main');
+        if (main && !isLikelyTeaser(main)) {
+            return [main];
+        }
+    }
+
     // 1. Standardowe <article>, ale tylko te, które nie są teaserami
     const articles = Array.from(document.querySelectorAll<HTMLElement>("article"))
         .filter(el => !isLikelyTeaser(el));
