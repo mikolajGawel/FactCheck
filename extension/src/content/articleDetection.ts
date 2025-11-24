@@ -3,33 +3,72 @@ import { HIGHLIGHT_IGNORE_SELECTOR } from "./constants";
 import { ArticleSummary } from "../types/highlightTypes";
 
 export function getArticleNodes(): HTMLElement[] {
-    // 1. Standard <article> elements (most modern sites)
-    const articles = document.querySelectorAll<HTMLElement>("article");
-    if (articles.length > 0) return Array.from(articles);
+    // Pomocnicza funkcja: czy element wygląda na "kafel z linkiem" zamiast prawdziwego artykułu
+  	function isLikelyTeaser(el: HTMLElement): boolean {
+        // Case 1: The node itself is a link (very common: <article><a href="...">...</a></article>)
+        if (el.tagName === 'A' || (el as any).hasAttribute('href')) {
+            return true;
+        }
 
-    // 2. Common class used by many news sites
-    const articleBodies = document.querySelectorAll<HTMLElement>(".articleBody, .article-body, [class*='articleBody']");
-    if (articleBodies.length > 0) return Array.from(articleBodies);
+        // Case 2: Contains exactly 1 link AND that link's text length is ≥ 90% of the whole element's text
+        // → means the whole article "article" is just one big clickable card
+        const links = el.querySelectorAll('a');
+        if (links.length === 1) {
+            const link = links[0] as HTMLAnchorElement;
+            const linkTextLen = link.textContent?.length || 0;
+            const totalTextLen = el.textContent?.length || 0;
+            if (totalTextLen > 0 && linkTextLen / totalTextLen >= 0.9) {
+                return true;
+            }
+        }
 
-    // 3. Gazeta.pl specific (fixed typo and added common variations)
+        // Case 3: Contains 2–4 links, but they are tiny compared to total text (e.g. "Read more", social buttons)
+        // → still probably a teaser if text is short
+        if (links.length >= 1 && links.length <= 8) {
+            const totalTextLen = el.textContent?.length || 0;
+            if (totalTextLen < 600) {  // short teaser
+                return true;
+            }
+        }
+
+        return false;
+    };
+
+    // 1. Standardowe <article>, ale tylko te, które nie są teaserami
+    const articles = Array.from(document.querySelectorAll<HTMLElement>("article"))
+        .filter(el => !isLikelyTeaser(el));
+
+    if (articles.length > 0) return articles;
+
+    // 2. Popularne klasy artykułów – też filtrujemy teasery
+    const articleBodies = Array.from(document.querySelectorAll<HTMLElement>(".articleBody, .article-body, [class*='articleBody']"))
+        .filter(el => !isLikelyTeaser(el));
+
+    if (articleBodies.length > 0) return articleBodies;
+
+    // 3. Gazeta.pl – selektory specyficzne
     const gazetaSelectors = [
-        ".bottom_section",     // note: double "t" → corrected from "botton_section"
-        "._articleContent",    // newer Gazeta.pl articles
+        ".bottom_section",
+        "._articleContent",
         ".article_content",
-        "[data-starea-articletype]", // another Gazeta.pl marker
+        "[data-starea-articletype]",
     ];
+
     for (const selector of gazetaSelectors) {
-        const nodes = document.querySelectorAll<HTMLElement>(selector);
-        if (nodes.length > 0) return Array.from(nodes);
+        const nodes = Array.from(document.querySelectorAll<HTMLElement>(selector))
+            .filter(el => !isLikelyTeaser(el));
+        if (nodes.length > 0) return nodes;
     }
 
-    // 4. Last resort: look for elements with a lot of <p> tags (heuristic)
+    // 4. Heurystyka awaryjna – duże bloki z wieloma <p>
     const candidates = document.querySelectorAll<HTMLElement>("div, section");
-    const best = Array.from(candidates).find(el => {
-        const paragraphs = el.querySelectorAll("p").length;
-        const textLength = el.textContent?.length || 0;
-        return paragraphs > 5 && textLength > 800; // reasonable article size
-    });
+    const best = Array.from(candidates)
+        .filter(el => !isLikelyTeaser(el)) // nadal odrzucamy oczywiste teasery
+        .find(el => {
+            const paragraphs = el.querySelectorAll("p").length;
+            const textLength = el.textContent?.length || 0;
+            return paragraphs > 5 && textLength > 800;
+        });
 
     return best ? [best] : [];
 }
@@ -75,17 +114,17 @@ export function collectArticles(): ArticleSummary[] {
     	const found = findArticleTitle(node);
     	let title: string;
     	let isReused = false;
-		
+
     	const snapshot = createTextSnapshot(node, HIGHLIGHT_IGNORE_SELECTOR);
     	const text = snapshot.text || "";
     	const sentences = countSentences(text);
-		
+
     	// Early filter – don't even compute titles for tiny fragments
     	if (sentences < minimalSentencesCount) {
     	    return;
     	}
-	
-    	if (found) {
+		// poznaj kontekst z ai is a common non-title in onet.pl articles
+    	if (found && found.trim().toLocaleLowerCase() != "poznaj kontekst z ai".trim().toLocaleLowerCase()) {
     	    title = found;
     	    lastGoodTitle = found;
     	    const count = (titleCounts.get(found) ?? 0) + 1;
@@ -101,7 +140,7 @@ export function collectArticles(): ArticleSummary[] {
     	} else {
     	    title = `Artykuł ${idx + 1}`;
     	}
-	
+
     	const snippet = text.slice(0, 200).trim().replace(/\s+/g, " ");
     	out.push({ id: idx, title, snippet });
 		});
