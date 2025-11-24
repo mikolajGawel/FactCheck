@@ -1,15 +1,44 @@
 import { randomUUID } from "node:crypto";
 // removed explicit express types on handler parameters to allow type inference
 import { analyzeArticleSentences } from "../services/analyzer.js";
-import { StartRequestSchema } from "../schemas/jobSchemas.js";
+import { StartRequestSchema, CacheCheckSchema } from "../schemas/jobSchemas.js";
 import { ensureJobBucket, getJob, buildJobRecord, getJobBucket } from "../services/jobsService.js";
 import { buildCacheKey, readCache, writeCache } from "../services/cacheService.js";
 
 const configuredSentenceLimit = Number(process.env.ANALYZER_MAX_SENTENCES);
 const MAX_SENTENCES = Number.isNaN(configuredSentenceLimit) ? 300 : Math.max(1, configuredSentenceLimit);
-export function getSenteceLimit(req,res) {
+export function getSenteceLimit(req, res) {
 	return res.json({ max_sentences: MAX_SENTENCES });
 }
+
+export async function checkCache(req, res) {
+	const parsedBody = CacheCheckSchema.safeParse(req.body ?? {});
+	if (!parsedBody.success) {
+		return res.status(400).json({
+			error: "Invalid input",
+			details: parsedBody.error.flatten()
+		});
+	}
+
+	const payload = parsedBody.data;
+	const cacheKey = buildCacheKey(payload);
+	const cacheHit = cacheKey ? readCache(cacheKey) : null;
+
+	if (cacheHit) {
+		return res.json({
+			hit: true,
+			cached: true,
+			result: cacheHit,
+			cache_key: cacheKey
+		});
+	}
+
+	return res.json({
+		hit: false,
+		cached: false
+	});
+}
+
 export async function recvRequest(req, res) {
 	const parsedBody = StartRequestSchema.safeParse(req.body ?? {});
 	if (!parsedBody.success) {
