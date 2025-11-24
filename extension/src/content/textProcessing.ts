@@ -15,7 +15,9 @@ export const DEFAULT_NOISE_SELECTORS = [
 	"img",
 	"image",
 	"video",
-	"picture"
+	"picture",
+	"link",
+	"meta"
 ];
 
 export const INTERACTIVE_SKIP_SELECTORS = ["a", "button", "label", "input", "textarea", "select"];

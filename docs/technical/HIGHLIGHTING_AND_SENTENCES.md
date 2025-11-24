@@ -197,12 +197,13 @@ This is intentionally designed to mirror the server’s behavior so that `contex
 When the extension prepares a job to send to the server it serializes the article/document DOM into an HTML string for the payload. To limit payload size (especially on pages with large images, embedded media, or complex forms) the extension performs a lightweight, deterministic pruning step before sending the HTML to the server:
 
 -   A deep clone of the snapshot root element is created.
--   A small set of non‑text, media and form tags is removed from the clone (`form`, `img`, `image`, `video`, `picture`).
+    -   A small set of non‑text, media, style and form tags is removed from the clone (`form`, `img`, `image`, `video`, `picture`, `script`, `style`, `link`, `meta`).
 -   The sanitized clone's `outerHTML` is used as the `content` / `context.html` value posted to the server.
 
 Rationale and safety guarantees:
 
 -   These tags do not produce text nodes that contribute to the canonical text extracted by `createTextSnapshot` (the snapshot already ignores them via `HIGHLIGHT_IGNORE_SELECTOR`), so pruning them does not change `context.text` or the per-character `pointers` used by highlighting.
+    -   Specifically, `<script>`, `<style>`, `<link>` and `<meta>` tags are safe to remove because they are explicitly ignored by both frontend (`HIGHLIGHT_IGNORE_SELECTOR`) and backend (`IGNORED_TAGS`) text extraction logic.
 -   Removing them reduces payload size significantly in many real pages without affecting sentence offsets or highlight alignment, preserving the key invariant that frontend and backend canonical text are identical after both sides' normalization.
 -   The pruning is performed only on the serialized HTML sent to the server; the live DOM used for mapping offsets (`pointers`) remains untouched.
 
