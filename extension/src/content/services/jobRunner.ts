@@ -124,14 +124,13 @@ async function limitPayload(textForCounting: string): Promise<string> {
 	}
 }
 
-export async function runJob(options: RunJobOptions): Promise<void> {
-	const resolvedContext = options.context;
-
-	const title = options.meta?.title ?? resolvedContext.title ?? null;
-	const url = options.meta?.url ?? (typeof location !== "undefined" ? location.href : null);
-	const language = navigator?.language?.split("-")[0] ?? "en";
-	const articleId = options.meta?.articleId;
-
+async function checkCache(
+	url: string | null,
+	articleId: number | undefined,
+	language: string,
+	resolvedContext: HighlightContext,
+	meta: JobMeta
+): Promise<boolean> {
 	try {
 		const cacheRes = await fetch(`${serverAddress}/cache/check`, {
 			method: "POST",
@@ -149,15 +148,29 @@ export async function runJob(options: RunJobOptions): Promise<void> {
 				highlightText(cacheBody.result, resolvedContext);
 				chrome.runtime.sendMessage({
 					type: "jobCompleted",
-					articleId: options.meta?.articleId,
-					url: options.meta?.url
+					articleId: meta?.articleId,
+					url: meta?.url
 				});
-				return;
+				return true;
 			}
 		}
 	} catch (e) {
 		console.warn("Cache check failed, proceeding to normal job start", e);
 	}
+	return false;
+}
+
+export async function runJob(options: RunJobOptions): Promise<void> {
+	const resolvedContext = options.context;
+
+	const title = options.meta?.title ?? resolvedContext.title ?? null;
+	const url = options.meta?.url ?? (typeof location !== "undefined" ? location.href : null);
+	const language = navigator?.language?.split("-")[0] ?? "en";
+	const articleId = options.meta?.articleId;
+
+	// Extracted cache check logic
+	const cacheHit = await checkCache(url, articleId, language, resolvedContext, options.meta);
+	if (cacheHit) return;
 
 	const truncatedPageContent = await limitPayload(options.text);
 
