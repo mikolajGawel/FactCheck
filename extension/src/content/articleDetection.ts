@@ -3,9 +3,35 @@ import { HIGHLIGHT_IGNORE_SELECTOR } from "./constants";
 import { ArticleSummary } from "../types/highlightTypes";
 
 export function getArticleNodes(): HTMLElement[] {
-	const articles = Array.from(document.querySelectorAll<HTMLElement>("article"));
-	if (articles.length > 0) return articles;
-	return Array.from(document.querySelectorAll<HTMLElement>(".articleBody"));
+    // 1. Standard <article> elements (most modern sites)
+    const articles = document.querySelectorAll<HTMLElement>("article");
+    if (articles.length > 0) return Array.from(articles);
+
+    // 2. Common class used by many news sites
+    const articleBodies = document.querySelectorAll<HTMLElement>(".articleBody, .article-body, [class*='articleBody']");
+    if (articleBodies.length > 0) return Array.from(articleBodies);
+
+    // 3. Gazeta.pl specific (fixed typo and added common variations)
+    const gazetaSelectors = [
+        ".bottom_section",     // note: double "t" → corrected from "botton_section"
+        "._articleContent",    // newer Gazeta.pl articles
+        ".article_content",
+        "[data-starea-articletype]", // another Gazeta.pl marker
+    ];
+    for (const selector of gazetaSelectors) {
+        const nodes = document.querySelectorAll<HTMLElement>(selector);
+        if (nodes.length > 0) return Array.from(nodes);
+    }
+
+    // 4. Last resort: look for elements with a lot of <p> tags (heuristic)
+    const candidates = document.querySelectorAll<HTMLElement>("div, section");
+    const best = Array.from(candidates).find(el => {
+        const paragraphs = el.querySelectorAll("p").length;
+        const textLength = el.textContent?.length || 0;
+        return paragraphs > 5 && textLength > 800; // reasonable article size
+    });
+
+    return best ? [best] : [];
 }
 
 export function findArticleTitle(articleNode: HTMLElement): string | null {
