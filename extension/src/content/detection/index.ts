@@ -2,42 +2,43 @@ import { createTextSnapshot } from "../textSnapshot";
 import { HIGHLIGHT_IGNORE_SELECTOR } from "../constants";
 import { ArticleSummary } from "../../types/highlightTypes";
 
-import { isLikelyTeaser, filterOutNested } from "./domUtils";
-import { getTvn24ArticleNodes, getGazetaArticleNodes, COMMON_ARTICLE_BODY_SELECTORS } from "./siteSelectors";
+import { isLikelyTeaser } from "./domUtils";
+import { createDefaultRegistry } from "./sites/siteSelectors";
 import { countSentences, createSnippet } from "./textUtils";
 import { findArticleTitle, generateTitle, createTitleState } from "./titleUtils";
 
-// Re-export for backward compatibility
-export { findArticleTitle } from "./titleUtils";
-
 const MINIMAL_SENTENCES_COUNT = 4;
+
+// Initialize default site handler registry
+let siteRegistry = createDefaultRegistry();
+
+/**
+ * Set custom site handler registry for testing or custom configurations
+ */
+export function setSiteRegistry(registry: any): void {
+	siteRegistry = registry;
+}
+
+/**
+ * Get the current site handler registry
+ */
+export function getSiteRegistry(): any {
+	return siteRegistry;
+}
 
 /**
  * Find article nodes in the current page
  * Uses site-specific heuristics and fallback strategies
  */
 export function getArticleNodes(): HTMLElement[] {
-	// 1. Site-specific detection (TVN24)
-	const tvn24Nodes = getTvn24ArticleNodes();
-	if (tvn24Nodes) return tvn24Nodes;
+	// Try site-specific handlers first
+	const matchedHandler = siteRegistry.findMatch();
+	if (matchedHandler) {
+		const nodes = matchedHandler.detect();
+		if (nodes) return nodes;
+	}
 
-	// 2. Standard <article> elements (excluding teasers)
-	const articles = Array.from(document.querySelectorAll<HTMLElement>("article")).filter(el => !isLikelyTeaser(el));
-	const topArticles = filterOutNested(articles);
-	if (topArticles.length > 0) return topArticles;
-
-	// 3. Common article body classes
-	const articleBodies = Array.from(document.querySelectorAll<HTMLElement>(COMMON_ARTICLE_BODY_SELECTORS)).filter(
-		el => !isLikelyTeaser(el)
-	);
-	const topArticleBodies = filterOutNested(articleBodies);
-	if (topArticleBodies.length > 0) return topArticleBodies;
-
-	// 4. Site-specific detection (Gazeta.pl)
-	const gazetaNodes = getGazetaArticleNodes();
-	if (gazetaNodes) return gazetaNodes;
-
-	// 5. Fallback: large blocks with many paragraphs
+	// Fallback: large blocks with many paragraphs
 	return findLargeTextBlocks();
 }
 
