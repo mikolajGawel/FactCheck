@@ -31,9 +31,7 @@ export function createTextSnapshot(root: HTMLElement, ignoreSelector: string): T
 	const doc = root.ownerDocument ?? document;
 	const filter: NodeFilter = {
 		acceptNode: node => {
-			if (!(node instanceof Text)) {
-				return NodeFilter.FILTER_SKIP;
-			}
+			if (!(node instanceof Text)) return NodeFilter.FILTER_SKIP;
 			const parent = node.parentElement;
 			if (!parent) return NodeFilter.FILTER_SKIP;
 
@@ -64,9 +62,7 @@ export function createTextSnapshot(root: HTMLElement, ignoreSelector: string): T
 		for (let idx = 0; idx < content.length; idx += 1) {
 			const char = content[idx];
 			if (isWhitespace(char)) {
-				if (!hasOutput) {
-					continue;
-				}
+				if (!hasOutput) continue;
 				const position: TextPosition = { node, offset: idx + 1 };
 				if (!pendingSpace) {
 					pendingSpace = {

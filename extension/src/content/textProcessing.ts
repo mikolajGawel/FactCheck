@@ -11,7 +11,11 @@ export const DEFAULT_NOISE_SELECTORS = [
 	"template",
 	"button",
 	"time",
-	"form"
+	"form",
+	"img",
+	"image",
+	"video",
+	"picture"
 ];
 
 export const INTERACTIVE_SKIP_SELECTORS = ["a", "button", "label", "input", "textarea", "select"];
