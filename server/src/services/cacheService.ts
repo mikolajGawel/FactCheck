@@ -55,6 +55,7 @@ function loadCacheFromFile() {
 loadCacheFromFile();
 
 export function buildCacheKey(payload) {
+	if (payload.url && payload.articleId) return `url:${payload.url}#article:${payload.articleId}`;
 	if (payload.url) return `url:${payload.url}`;
 	if (!payload.content) return null;
 	return `content:${createHash("sha256").update(payload.content).digest("hex")}`;
