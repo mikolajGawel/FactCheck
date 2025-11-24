@@ -173,6 +173,26 @@ The combined effect of `createTextSnapshot` is:
 
 This is intentionally designed to mirror the server’s behavior so that `context.text` can be conceptually equal to `reconstructTextFromBlocks(textBlocks)` for the same HTML.
 
+### 2.2.1 Extension‑side HTML serialization (payload pruning)
+
+When the extension prepares a job to send to the server it serializes the article/document DOM into an HTML string for the payload. To limit payload size (especially on pages with large images, embedded media, or complex forms) the extension performs a lightweight, deterministic pruning step before sending the HTML to the server:
+
+- A deep clone of the snapshot root element is created.
+- A small set of non‑text, media and form tags is removed from the clone (`form`, `img`, `image`, `video`, `picture`).
+- The sanitized clone's `outerHTML` is used as the `content` / `context.html` value posted to the server.
+
+Rationale and safety guarantees:
+
+- These tags do not produce text nodes that contribute to the canonical text extracted by `createTextSnapshot` (the snapshot already ignores them via `HIGHLIGHT_IGNORE_SELECTOR`), so pruning them does not change `context.text` or the per‑character `pointers` used by highlighting.
+- Removing them reduces payload size significantly in many real pages without affecting sentence offsets or highlight alignment, preserving the key invariant that frontend and backend canonical text are identical after both sides' normalization.
+- The pruning is performed only on the serialized HTML sent to the server; the live DOM used for mapping offsets (`pointers`) remains untouched.
+
+Developer notes and caveats:
+
+- If you need the server to see any semantic data contained in attributes of those removed elements (for example `alt` text on images), consider extracting that data separately and including it in the job metadata rather than relying on raw HTML.
+- If you change the list of tags that are physically removed from the payload, ensure that the frontend text extraction rules (`HIGHLIGHT_IGNORE_SELECTOR` / `DEFAULT_NOISE_SELECTORS`) and the server's `IGNORED_TAGS` remain conceptually aligned — either by also updating the server or by documenting the asymmetry and its implications for offsets.
+- `buildCustomContext(content)` still uses the caller‑provided `content` verbatim; callers are responsible for supplying already‑sanitized HTML when appropriate.
+
 
 ### 2.3 Shared Skip Rules (Frontend/Backend)
 
