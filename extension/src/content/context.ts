@@ -78,5 +78,9 @@ function serializeContextHtml(root: HTMLElement): string {
 	if (PAYLOAD_STRIP_QUERY) {
 		clone.querySelectorAll(PAYLOAD_STRIP_QUERY).forEach(node => node.remove());
 	}
+
+	// Remove style attributes
+	if (clone.hasAttribute && clone.hasAttribute("style")) clone.removeAttribute("style");
+	clone.querySelectorAll("[style]").forEach((el: Element) => el.removeAttribute("style"));
 	return clone.outerHTML;
 }
