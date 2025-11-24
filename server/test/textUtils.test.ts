@@ -75,34 +75,68 @@ test.describe("segmentSentencesWithStructure keeps shallow paragraph children to
 		assert.equal(processed[0].text, "This is sentence One.");
 		assert.equal(processed[1].text, "Now sentence 2 is starting with dot inside span.");
 	});
-});
 
-test("parseHtmlToBlocks ignores specified tags", () => {
-	const html = "<p>Fact.</p><nav>Menu</nav><footer>Footer</footer><button>Click</button>";
-	const blocks = parseHtmlToBlocks(html);
-	// Should only contain "Fact."
-	const text = blocks.map(b => b.text).join("");
-	assert.equal(text, "Fact.");
-});
+	test("omits sentences that end within a link", () => {
+		const html = `<span>Przeczytaj także: <a href="" data-allow-layer="">Kłamliwy wpis Instytutu Jad Waszem. Były ambasador Polski reaguje. "To skandal"</a></span>`;
+		const processed = testCase(html);
+		assert.equal(processed.length, 0);
+	});
 
-test("parseHtmlToBlocks handles leading whitespace", () => {
-	const html = "   <p>Fact.</p>";
-	const blocks = parseHtmlToBlocks(html);
-	// Should be trimmed
-	assert.equal(blocks.length, 1);
-	assert.equal(blocks[0].text, "Fact.");
-});
+	test("preserves sentences in paragraph links", () => {
+		const html = "<p>Read more in <a href='#'>this article</a>.</p>";
+		const processed = testCase(html);
+		assert.equal(processed.length, 1);
+		assert.equal(processed[0].text, "Read more in this article.");
+	});
 
-test("parseHtmlToBlocks merges whitespace across blocks", () => {
-	const html = "<div>A</div> <div>B</div>";
-	const blocks = parseHtmlToBlocks(html);
-	// Should be "A", " B" or "A", "B" -> joined "A B"
-	const text = blocks.map(b => b.text).join("");
-	assert.equal(text, "A B");
-});
+	test("preserves non-link sentences in mixed containers", () => {
+		const html = "<div>Alpha. <a href='#'>Beta.</a></div>";
+		const processed = testCase(html);
+		// "Alpha." should be kept. "Beta." should be skipped (hard skip).
+		assert.equal(processed.length, 1);
+		assert.equal(processed[0].text, "Alpha.");
+	});
 
-test("limitSentences truncates arrays", () => {
-	const sentences = Array.from({ length: 5 }, (_, index) => ({ id: index }));
-	const limited = limitSentences(sentences, 2);
-	assert.equal(limited.length, 2);
+	test("skips mixed sentences involving non-paragraph links", () => {
+		const html = "<div>Read also: <a href='#'>Some Link</a></div>";
+		const processed = testCase(html);
+		// "Read also: Some Link" overlaps with hard skip link, so it should be skipped.
+		assert.equal(processed.length, 0);
+	});
+
+	test("skips pure standalone non-paragraph links", () => {
+		const html = "<a href='#'>Standalone link.</a>";
+		const processed = testCase(html);
+		assert.equal(processed.length, 0);
+	});
+
+	test("parseHtmlToBlocks ignores specified tags", () => {
+		const html = "<p>Fact.</p><nav>Menu</nav><footer>Footer</footer><button>Click</button>";
+		const blocks = parseHtmlToBlocks(html);
+		// Should only contain "Fact."
+		const text = blocks.map(b => b.text).join("");
+		assert.equal(text, "Fact.");
+	});
+
+	test("parseHtmlToBlocks handles leading whitespace", () => {
+		const html = "   <p>Fact.</p>";
+		const blocks = parseHtmlToBlocks(html);
+		// Should be trimmed
+		assert.equal(blocks.length, 1);
+		assert.equal(blocks[0].text, "Fact.");
+	});
+
+	test("parseHtmlToBlocks merges whitespace across blocks", () => {
+		const html = "<div>A</div> <div>B</div>";
+		const blocks = parseHtmlToBlocks(html);
+		// Should be "A", " B" or "A", "B" -> joined "A B"
+		const text = blocks.map(b => b.text).join("");
+		assert.equal(text, "A B");
+	});
+
+	test("limitSentences truncates arrays", () => {
+		const sentences = Array.from({ length: 5 }, (_, index) => ({ id: index }));
+		const limited = limitSentences(sentences, 2);
+		assert.equal(limited.length, 2);
+	});
 });

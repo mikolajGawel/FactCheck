@@ -72,6 +72,7 @@ export interface TextBlock {
 	path: string[];
 	isHeader: boolean;
 	skipAI?: boolean;
+	skipAIHard?: boolean;
 	paragraphContext?: ParagraphContext;
 }
 
@@ -167,6 +168,7 @@ export function parseHtmlToBlocks(html: string): TextBlock[] {
 		path: string[],
 		insideHeader: boolean,
 		skipAIForNode = false,
+		skipAIHardForNode = false,
 		paragraphContext?: ParagraphContext
 	) {
 		if (node.type === "text") {
@@ -179,6 +181,7 @@ export function parseHtmlToBlocks(html: string): TextBlock[] {
 					path: [...path],
 					isHeader: insideHeader,
 					skipAI: skipAIForNode,
+					skipAIHard: skipAIHardForNode,
 					paragraphContext
 				});
 			}
@@ -194,12 +197,16 @@ export function parseHtmlToBlocks(html: string): TextBlock[] {
 			// This ensures offset alignment - frontend includes this text, backend must too.
 			// Only allow traversing anchors when their parent or grandparent is a <p>.
 			let nextSkipAI = skipAIForNode;
+			let nextSkipAIHard = skipAIHardForNode;
+
 			if (tagName === "a") {
 				const parentTag = path.length ? getTagNameFromPathEntry(path[path.length - 1]) : "";
 				const grandParentTag = path.length > 1 ? getTagNameFromPathEntry(path[path.length - 2]) : "";
 				if (parentTag !== "p" && grandParentTag !== "p") {
 					// Mark for AI skip but INCLUDE the text (for offset alignment)
 					nextSkipAI = true;
+					// Also mark as "hard skip" so we can drop sentences entirely from these regions
+					nextSkipAIHard = true;
 				}
 			}
 
@@ -228,7 +235,14 @@ export function parseHtmlToBlocks(html: string): TextBlock[] {
 			$(node)
 				.contents()
 				.each((i, child) => {
-					traverse(child, [...path, `${tagName}[${i}]`], nextInsideHeader, nextSkipAI, nextParagraphContext);
+					traverse(
+						child,
+						[...path, `${tagName}[${i}]`],
+						nextInsideHeader,
+						nextSkipAI,
+						nextSkipAIHard,
+						nextParagraphContext
+					);
 				});
 		}
 	}
@@ -333,7 +347,7 @@ export function segmentSentencesWithStructure(blocks: TextBlock[], language = "e
 	};
 
 	// We'll keep a mapping of which ranges in `currentBuffer` come from which blocks
-	let bufferBlockRanges: { start: number; end: number; skipAI?: boolean }[] = [];
+	let bufferBlockRanges: { start: number; end: number; skipAI?: boolean; skipAIHard?: boolean }[] = [];
 
 	for (let i = 0; i < blocks.length; i++) {
 		const currentBlock = blocks[i];
@@ -344,7 +358,8 @@ export function segmentSentencesWithStructure(blocks: TextBlock[], language = "e
 		bufferBlockRanges.push({
 			start: bufferOffset,
 			end: bufferOffset + currentBlock.text.length,
-			skipAI: currentBlock.skipAI
+			skipAI: currentBlock.skipAI,
+			skipAIHard: currentBlock.skipAIHard
 		});
 
 		let hasSentenceBreakInside = /[.!?]/.test(currentBlock.text);
@@ -370,14 +385,20 @@ export function segmentSentencesWithStructure(blocks: TextBlock[], language = "e
 				// only when all overlapping block ranges are skipAI === true.
 				const overlapping = bufferBlockRanges.filter(r => !(r.end <= s.start || r.start >= s.end));
 				const skipAI = overlapping.length > 0 && overlapping.every(r => r.skipAI === true);
+				// For hard skip (non-paragraph links), if ANY part of the sentence is in the skip region,
+				// we drop the whole sentence. This handles cases like "Read also: <link>" where
+				// the sentence spans across the label and the link.
+				const skipAIHard = overlapping.length > 0 && overlapping.some(r => r.skipAIHard === true);
 
-				sentences.push({
-					id: sentences.length,
-					text: s.text,
-					start: absStart,
-					end: absEnd,
-					skipAI
-				});
+				if (!skipAIHard) {
+					sentences.push({
+						id: sentences.length,
+						text: s.text,
+						start: absStart,
+						end: absEnd,
+						skipAI
+					});
+				}
 			}
 		};
 
@@ -402,7 +423,8 @@ export function segmentSentencesWithStructure(blocks: TextBlock[], language = "e
 					.map(r => ({
 						start: r.start - cutPoint,
 						end: r.end - cutPoint,
-						skipAI: r.skipAI
+						skipAI: r.skipAI,
+						skipAIHard: r.skipAIHard
 					}))
 					.filter(r => r.end > 0);
 			} else {
@@ -418,12 +440,19 @@ export function segmentSentencesWithStructure(blocks: TextBlock[], language = "e
 			const endLocal = temp.length;
 			const overlapping = bufferBlockRanges.filter(r => !(r.end <= startLocal || r.start >= endLocal));
 			const skipAI = overlapping.length > 0 && overlapping.every(r => r.skipAI === true);
+			const skipAIHard = overlapping.length > 0 && overlapping.some(r => r.skipAIHard === true);
 
-			commitSentence(currentBuffer);
-			// The commitSentence call already pushes the trimmed sentence without skipAI flag,
-			// so we need to patch the last pushed sentence to carry skipAI information.
-			if (sentences.length > 0) {
-				sentences[sentences.length - 1].skipAI = skipAI;
+			if (!skipAIHard) {
+				commitSentence(currentBuffer);
+				// The commitSentence call already pushes the trimmed sentence without skipAI flag,
+				// so we need to patch the last pushed sentence to carry skipAI information.
+				if (sentences.length > 0) {
+					sentences[sentences.length - 1].skipAI = skipAI;
+				}
+			} else {
+				// If we skip hard, we still need to advance the start index
+				sentenceStartIndex += currentBuffer.length;
+				currentBuffer = "";
 			}
 			bufferBlockRanges = [];
 		}
@@ -432,12 +461,19 @@ export function segmentSentencesWithStructure(blocks: TextBlock[], language = "e
 	if (currentBuffer.trim()) {
 		const subSentences = standardSegment(currentBuffer, language);
 		subSentences.forEach(s => {
-			sentences.push({
-				id: sentences.length,
-				text: s.text,
-				start: sentenceStartIndex + s.start,
-				end: sentenceStartIndex + s.end
-			});
+			const absStart = sentenceStartIndex + s.start;
+			const absEnd = sentenceStartIndex + s.end;
+			const overlapping = bufferBlockRanges.filter(r => !(r.end <= s.start || r.start >= s.end));
+			const skipAIHard = overlapping.length > 0 && overlapping.some(r => r.skipAIHard === true);
+
+			if (!skipAIHard) {
+				sentences.push({
+					id: sentences.length,
+					text: s.text,
+					start: absStart,
+					end: absEnd
+				});
+			}
 		});
 	}
 
@@ -466,7 +502,23 @@ function isStructuralBreakSignificant(pathA: string[], pathB: string[]): boolean
 	const tagB = getTagName(pathB[divergeIndex]);
 
 	if (BLOCK_TAGS.has(tagA) || BLOCK_TAGS.has(tagB)) {
-		return true;
+		// Parent is a block tag. We should break ONLY if one of the children is a block tag.
+		// If both children are inline (text nodes or inline tags), we should not break.
+
+		// Check next segment for A
+		if (divergeIndex + 1 < pathA.length) {
+			const nextTagA = getTagName(pathA[divergeIndex + 1]);
+			if (BLOCK_TAGS.has(nextTagA)) return true;
+		}
+
+		// Check next segment for B
+		if (divergeIndex + 1 < pathB.length) {
+			const nextTagB = getTagName(pathB[divergeIndex + 1]);
+			if (BLOCK_TAGS.has(nextTagB)) return true;
+		}
+
+		// If neither child is a block tag, treat as inline flow
+		return false;
 	}
 
 	return false;

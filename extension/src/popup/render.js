@@ -101,7 +101,7 @@ export function computeEstimateSecondsFromText(text) {
 	} catch (e) {
 		sentences = snippet ? Math.max(1, (snippet.match(/[.!?]+/g) || []).length) : 1;
 	}
-	const secondsPerSentence = 0.70; 
+	const secondsPerSentence = 0.5;
 	const estimatedSeconds = Math.max(1, Math.round(sentences * secondsPerSentence));
 	progressState.estimateSentences = sentences;
 	return estimatedSeconds;
@@ -131,7 +131,9 @@ export function startProgressAnimation(totalSeconds, startedAt = Date.now()) {
 	const bar = articlesContainerEl?.querySelector(".progress-bar");
 	const estimateLabel = articlesContainerEl?.querySelector(".estimate");
 	if (estimateLabel) {
-		estimateLabel.innerHTML = `Przewidywany czas: <span class="estimate-time">${formatTimeSeconds(_progressDuration)}</span>`;
+		estimateLabel.innerHTML = `Przewidywany czas: <span class="estimate-time">${formatTimeSeconds(
+			_progressDuration
+		)}</span>`;
 	}
 
 	function tick() {
@@ -184,7 +186,9 @@ export function renderInProgress(startTime, estimatedDuration) {
             <div class="state">
                 <img src="inprogress.gif">
                 <div class="progress-wrap"><div class="progress-bar"></div></div>
-                <div class="estimate">Przewidywany czas: <span class="estimate-time">${formatTimeSeconds(progressState.estimateSeconds)}</span>${progressState.estimateSentences ? ` — ${progressState.estimateSentences} zdań` : ""}</div>
+                <div class="estimate">Przewidywany czas: <span class="estimate-time">${formatTimeSeconds(
+					progressState.estimateSeconds
+				)}</span>${progressState.estimateSentences ? ` — ${progressState.estimateSentences} zdań` : ""}</div>
             </div>`;
 		startBtnEl.style.display = "none";
 		titleTextEl.textContent = "Analiza w toku";
@@ -207,7 +211,7 @@ export function renderInProgressWithEstimate(article, startTime = Date.now()) {
 	if (!articlesContainerEl || !startBtnEl || !titleTextEl) return;
 	const est = computeEstimateSecondsFromArticle(article);
 
-	progressState.mode = "determinate"; 
+	progressState.mode = "determinate";
 	progressState.estimateSeconds = est;
 	progressState.startedAt = startTime;
 
@@ -215,7 +219,9 @@ export function renderInProgressWithEstimate(article, startTime = Date.now()) {
 		<div class="state">
 			<img src="inprogress.gif">
 			<div class="progress-wrap"><div class="progress-bar"></div></div>
-			<div class="estimate">Przewidywany czas: <span class="estimate-time">${formatTimeSeconds(est)}</span>${progressState.estimateSentences ? ` — ${progressState.estimateSentences} zdań` : ""}</div>
+			<div class="estimate">Przewidywany czas: <span class="estimate-time">${formatTimeSeconds(est)}</span>${
+		progressState.estimateSentences ? ` — ${progressState.estimateSentences} zdań` : ""
+	}</div>
 		</div>`;
 	startBtnEl.style.display = "none";
 	titleTextEl.textContent = "Analiza w toku";
