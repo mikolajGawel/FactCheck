@@ -174,8 +174,9 @@ function stopBackgroundChangeListener(): void {
 	}
 }
 
-export function removeHighlights(): void {
-	const highlightedSpans = document.querySelectorAll<HTMLElement>("span[data-factcheck-highlight]");
+export function removeHighlights(root?: HTMLElement): void {
+	const container: ParentNode = root ?? document;
+	const highlightedSpans = container.querySelectorAll<HTMLElement>("span[data-factcheck-highlight]");
 	highlightedSpans.forEach(span => {
 		const parent = span.parentNode;
 		if (!parent) return;
@@ -194,11 +195,11 @@ export function highlightText(result: HighlightResult | null | undefined, contex
 	// Recompute dark mode per-run to avoid stale cached value across pages
 	__cachedPageDarkMode = null;
 	if (!result || !Array.isArray(result.spans) || result.spans.length === 0 || !context || !context.pointers?.length) {
-		removeHighlights();
+		removeHighlights(context?.root);
 		return;
 	}
 
-	removeHighlights();
+	removeHighlights(context?.root);
 	ensureTooltip();
 
 	const sortedSpans = [...result.spans].filter(isValidSpan).sort((a, b) => b.start - a.start || b.end - a.end);
