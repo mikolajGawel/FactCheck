@@ -1,5 +1,4 @@
-import type { HighlightContext, TextPointer } from "../articleScraper";
-import type { HighlightSpan, HighlightResult } from "../../types/highlightTypes";
+import type { HighlightSpan, HighlightResult, HighlightContext, TextPointer } from "../../types/highlightTypes";
 import { ensureTooltip, attachTooltip, hideTooltip } from "./highlightTooltip";
 
 const TYPE_COLORS: Record<string, { light: string; dark: string }> = {
@@ -80,7 +79,6 @@ function colorStringToRGBTuple(colorStr: string): [number, number, number] | nul
 	return [parsed[0], parsed[1], parsed[2]];
 }
 
-
 function updateHighlights(isDark: boolean): void {
 	const highlightedSpans = document.querySelectorAll<HTMLElement>("span[data-factcheck-highlight]");
 	highlightedSpans.forEach(el => {
@@ -116,7 +114,12 @@ function startBackgroundChangeListener(): void {
 		const observeTarget1 = document.documentElement;
 		const observeTarget2 = document.body || null;
 
-		const opts: MutationObserverInit = { attributes: true, attributeFilter: ["class", "style"], subtree: true, childList: false };
+		const opts: MutationObserverInit = {
+			attributes: true,
+			attributeFilter: ["class", "style"],
+			subtree: true,
+			childList: false
+		};
 
 		if (observeTarget1) __highlightBgObserver.observe(observeTarget1, opts);
 		if (observeTarget2) __highlightBgObserver.observe(observeTarget2, opts);
@@ -209,7 +212,7 @@ export function highlightText(result: HighlightResult | null | undefined, contex
 		if (!range) continue;
 
 		const highlights = wrapRange(range, span);
-		
+
 		for (const highlight of highlights) {
 			attachTooltip(highlight, span);
 		}
@@ -350,7 +353,7 @@ function wrapRangeAcrossBlocks(range: Range, span: HighlightSpan, color: string,
 	for (let i = groups.length - 1; i >= 0; i--) {
 		const group = groups[i];
 		const wrapper = wrapTextNodeGroup(group, color, span);
-		wrappers.unshift(wrapper); 
+		wrappers.unshift(wrapper);
 	}
 
 	return wrappers;
@@ -370,7 +373,7 @@ function wrapRangeWithinBlock(range: Range, span: HighlightSpan, color: string):
 			return wrapper;
 		} catch (err) {
 			console.warn("FactCheck: unable to wrap range", err);
-			
+
 			const textNodesWithOffsets: Array<{ node: Text; startOffset: number; endOffset: number }> = [];
 			collectTextNodesInRange(range, textNodesWithOffsets);
 
@@ -470,7 +473,6 @@ function collectTextNodesInRange(range: Range, result: Array<{ node: Text; start
 		const textContent = textNode.textContent ?? "";
 
 		if (textContent.trim().length > 0) {
-
 			const isStartNode = textNode === range.startContainer;
 			const isEndNode = textNode === range.endContainer;
 
@@ -501,9 +503,7 @@ function wrapTextNodePortion(
 
 	const wrapper = createHighlightSpan(color, span);
 
-	
 	if (safeStart === 0 && safeEnd === textLength) {
-
 		const parent = textNode.parentNode;
 		if (parent) {
 			parent.insertBefore(wrapper, textNode);

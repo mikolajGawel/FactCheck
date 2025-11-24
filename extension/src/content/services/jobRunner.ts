@@ -1,6 +1,6 @@
 /// <reference types="chrome" />
 
-import type { HighlightContext } from "../articleScraper";
+import { HighlightContext } from "types/highlightTypes";
 import { highlightText } from "../highlighting/factHighlight";
 import { validateTextAlignment } from "../textSnapshot";
 

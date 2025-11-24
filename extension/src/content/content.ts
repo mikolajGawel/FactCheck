@@ -1,13 +1,8 @@
 /// <reference types="chrome" />
 
-import {
-	collectArticles,
-	collectArticleText,
-	buildArticleContext,
-	buildCustomContext,
-	buildDocumentContext,
-	type HighlightContext
-} from "./articleScraper";
+import { buildArticleContext, buildCustomContext, buildDocumentContext, collectArticleText } from "./context";
+import { HighlightContext } from "types/highlightTypes";
+import { collectArticles } from "./detection";
 import { runJob } from "./services/jobRunner";
 
 type RuntimeMessage =
