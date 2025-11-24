@@ -126,15 +126,44 @@ async function limitPayload(textForCounting: string): Promise<string> {
 
 export async function runJob(options: RunJobOptions): Promise<void> {
 	const resolvedContext = options.context;
-	const truncatedPageContent = await limitPayload(options.text);
 
 	const title = options.meta?.title ?? resolvedContext.title ?? null;
 	const url = options.meta?.url ?? (typeof location !== "undefined" ? location.href : null);
 	const language = navigator?.language?.split("-")[0] ?? "en";
+	const articleId = options.meta?.articleId;
+
+	try {
+		const cacheRes = await fetch(`${serverAddress}/cache/check`, {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+				...getAuthHeaders()
+			},
+			body: JSON.stringify({ url, articleId, language })
+		});
+
+		if (cacheRes.ok) {
+			const cacheBody = await cacheRes.json();
+			if (cacheBody.hit && cacheBody.result) {
+				console.log("Cache hit:", cacheBody.result);
+				highlightText(cacheBody.result, resolvedContext);
+				chrome.runtime.sendMessage({
+					type: "jobCompleted",
+					articleId: options.meta?.articleId,
+					url: options.meta?.url
+				});
+				return;
+			}
+		}
+	} catch (e) {
+		console.warn("Cache check failed, proceeding to normal job start", e);
+	}
+
+	const truncatedPageContent = await limitPayload(options.text);
 
 	let job_id: string | null = null;
 	try {
-		job_id = await startJob(truncatedPageContent, title, url, language);
+		job_id = await startJob(truncatedPageContent, title, url, language, articleId);
 	} catch (err: unknown) {
 		const message = err && typeof err === "object" && "message" in err ? (err as any).message : String(err);
 		console.error("Server start failed:", message);
@@ -151,14 +180,21 @@ export async function runJob(options: RunJobOptions): Promise<void> {
 	}
 }
 
-async function startJob(content: string, title: string | null, url: string | null, language: string): Promise<string> {
+async function startJob(
+	content: string,
+	title: string | null,
+	url: string | null,
+	language: string,
+	articleId?: number
+): Promise<string> {
+	console.log({ content, title, url, language, articleId });
 	const start = await fetch(`${serverAddress}/start`, {
 		method: "POST",
 		headers: {
 			"Content-Type": "application/json",
 			...getAuthHeaders()
 		},
-		body: JSON.stringify({ content, title, url, language })
+		body: JSON.stringify({ content, title, url, language, articleId })
 	});
 
 	if (!start.ok) {
