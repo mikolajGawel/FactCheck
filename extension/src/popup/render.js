@@ -101,7 +101,7 @@ export function computeEstimateSecondsFromText(text) {
 	} catch (e) {
 		sentences = snippet ? Math.max(1, (snippet.match(/[.!?]+/g) || []).length) : 1;
 	}
-	const secondsPerSentence = 0.35; 
+	const secondsPerSentence = 0.70; 
 	const estimatedSeconds = Math.max(1, Math.round(sentences * secondsPerSentence));
 	progressState.estimateSentences = sentences;
 	return estimatedSeconds;
