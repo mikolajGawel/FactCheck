@@ -80,8 +80,11 @@ function serializeContextHtml(root: HTMLElement): string {
 		clone.querySelectorAll(PAYLOAD_STRIP_QUERY).forEach(node => node.remove());
 	}
 
-	// Remove style attributes
-	if (clone.hasAttribute && clone.hasAttribute("style")) clone.removeAttribute("style");
-	clone.querySelectorAll("[style]").forEach((el: Element) => el.removeAttribute("style"));
+	// Remove useless attributes
+	const attributesToRemove = ["style", "src"];
+	attributesToRemove.forEach(attr => {
+		if (clone.hasAttribute && clone.hasAttribute(attr)) clone.removeAttribute(attr);
+		clone.querySelectorAll<HTMLElement>(`[${attr}]`).forEach(el => el.removeAttribute(attr));
+	});
 	return clone.outerHTML;
 }

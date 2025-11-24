@@ -25,6 +25,32 @@ class Tvn24Handler implements SiteHandler {
 }
 
 /**
+ * Custom handler for TVRepublika
+ */
+class TvRepublikaHandler implements SiteHandler {
+	readonly id = "tvrepublika";
+
+	matches(): boolean {
+		try {
+			return typeof location !== "undefined" && !!location.hostname && location.hostname.includes("tvrepublika");
+		} catch {
+			return false;
+		}
+	}
+
+	detect(): HTMLElement[] | null {
+		const main = document.querySelector<HTMLElement>("div.main-column");
+		if (!main || isLikelyTeaser(main)) return null;
+
+		// TODO: Odrębne częśći ale jakoś złączyć w jeden artykuł
+		// const partsOfArticle = Array.from(
+		// 	main.querySelectorAll<HTMLElement>(":not(.block--type-advertisement, .hero-article)")
+		// );
+		return [main];
+	}
+}
+
+/**
  * Create and register all built-in site handlers
  */
 export function createDefaultRegistry(): SiteHandlerRegistry {
@@ -32,6 +58,9 @@ export function createDefaultRegistry(): SiteHandlerRegistry {
 
 	// TVN24 - custom handler for <main> tag preference
 	registry.register(new Tvn24Handler());
+
+	// TVRepublika - custom handler for main column
+	registry.register(new TvRepublikaHandler());
 
 	// Gazeta.pl - selector-based handler
 	registry.register(
