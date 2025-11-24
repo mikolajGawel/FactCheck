@@ -1,50 +1,15 @@
 import type { HighlightSpan } from "../../types/highlightTypes";
+import tooltipCss from "./tooltip.css";
 
 let tooltip: HTMLDivElement | null = null;
 let tooltipStyleEl: HTMLStyleElement | null = null;
-const TOOLTIP_CSS_FALLBACK = `
-.fc-tooltip {
-  position: fixed;
-  padding: 8px 12px;
-  background: rgba(0, 0, 0, 0.85);
-  color: #fff;
-  border-radius: 6px;
-  font-size: 13px;
-  pointer-events: none;
-  z-index: 999999;
-  display: none;
-  max-width: calc(100vw - 30px);
-  word-wrap: break-word;
-  line-height: 1.3;
-  box-sizing: border-box;
-}
-
-.fc-tooltip--visible {
-  display: block;
-}
-
-/* small offset helper in case of very small screens */
-.fc-tooltip--right-edge {
-  right: 10px !important;
-  left: auto !important;
-}
-
-
-.fc-tooltip h5 {
-    font-size: 1rem;
-}
-
-.fc-tooltip p {
-    max-width: 45ch;
-    color: rgba(255, 255, 255, 0.8);
-}`;
 
 export function ensureTooltip(): void {
 	if (tooltip) return;
 
 	tooltipStyleEl = document.createElement("style");
 	tooltipStyleEl.setAttribute("data-factcheck", "tooltip-styles");
-	tooltipStyleEl.textContent = TOOLTIP_CSS_FALLBACK;
+	tooltipStyleEl.textContent = tooltipCss;
 	document.body.appendChild(tooltipStyleEl);
 
 	tooltip = document.createElement("div");

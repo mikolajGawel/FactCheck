@@ -38,6 +38,10 @@ export default (env, argv) => {
 							transpileOnly: true
 						}
 					}
+				},
+				{
+					test: /\.css$/,
+					type: "asset/source"
 				}
 			]
 		},
