@@ -11,7 +11,8 @@ export const DEFAULT_NOISE_SELECTORS = [
 	"template",
 	"button",
 	"time",
-	"form"
+	"form",
+	"svg"
 ];
 
 export const INTERACTIVE_SKIP_SELECTORS = ["a", "button", "label", "input", "textarea", "select"];
@@ -24,7 +25,7 @@ export interface NormalizeTextOptions {
 	collapseNewlines?: boolean;
 	trim?: boolean;
 }
- 
+
 export function normalizeText(raw: string, options: NormalizeTextOptions = {}): string {
 	if (!raw) return "";
 	const { collapseNewlines = true, trim = true } = options;

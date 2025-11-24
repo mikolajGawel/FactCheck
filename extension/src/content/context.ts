@@ -6,11 +6,10 @@ import { HighlightContext, HighlightSource } from "../types/highlightTypes";
 
 // These tags never contribute to canonical text (see docs) but inflate payload size,
 // so we physically remove them before sending HTML to the backend.
-// Note: the following tags (including <script>, <style>, <link>, <meta>) are already
-// ignored during text extraction on both frontend and backend, so removing them from
-// the serialized payload does not affect offsets or canonical text.
-const PAYLOAD_STRIP_SELECTORS = ["form", "img", "image", "video", "picture", "script", "style", "link", "meta"];
+const PAYLOAD_STRIP_SELECTORS = ["form", "img", "image", "video", "picture", "script", "style", "link", "meta", "svg"];
 const PAYLOAD_STRIP_QUERY = PAYLOAD_STRIP_SELECTORS.join(", ");
+
+// Adding svg to the list of selectors to strip from payloads
 
 export function collectArticleText(articleId: number): string {
 	return buildArticleContext(articleId).text;
