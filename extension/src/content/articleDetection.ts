@@ -34,17 +34,24 @@ export function getArticleNodes(): HTMLElement[] {
         return false;
     };
 
+    // Remove nodes that are contained inside other candidate nodes
+    function filterOutNested(nodes: HTMLElement[]): HTMLElement[] {
+        return nodes.filter(n => !nodes.some(other => other !== n && other.contains(n)));
+    }
+
     // 1. Standardowe <article>, ale tylko te, które nie są teaserami
     const articles = Array.from(document.querySelectorAll<HTMLElement>("article"))
         .filter(el => !isLikelyTeaser(el));
 
-    if (articles.length > 0) return articles;
+    const topArticles = filterOutNested(articles);
+    if (topArticles.length > 0) return topArticles;
 
     // 2. Popularne klasy artykułów – też filtrujemy teasery
     const articleBodies = Array.from(document.querySelectorAll<HTMLElement>(".articleBody, .article-body, [class*='articleBody']"))
         .filter(el => !isLikelyTeaser(el));
 
-    if (articleBodies.length > 0) return articleBodies;
+    const topArticleBodies = filterOutNested(articleBodies);
+    if (topArticleBodies.length > 0) return topArticleBodies;
 
     // 3. Gazeta.pl – selektory specyficzne
     const gazetaSelectors = [
@@ -57,7 +64,8 @@ export function getArticleNodes(): HTMLElement[] {
     for (const selector of gazetaSelectors) {
         const nodes = Array.from(document.querySelectorAll<HTMLElement>(selector))
             .filter(el => !isLikelyTeaser(el));
-        if (nodes.length > 0) return nodes;
+        const topNodes = filterOutNested(nodes);
+        if (topNodes.length > 0) return topNodes;
     }
 
     // 4. Heurystyka awaryjna – duże bloki z wieloma <p>
