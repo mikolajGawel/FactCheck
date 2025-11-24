@@ -7,7 +7,14 @@ export const StartRequestSchema = z.object({
 		.max(100000, "Treść artykułu jest zbyt długa (limit 100k znaków)"),
 	title: z.string().max(512).trim().optional(),
 	url: z.string().url("Nieprawidłowy adres URL").optional(),
-	language: z.string().min(2).max(12).trim().optional()
+	language: z.string().min(2).max(12).trim().optional(),
+	articleId: z.number().int().optional()
+});
+
+export const CacheCheckSchema = z.object({
+	content: z.string().optional(),
+	url: z.string().url().optional(),
+	articleId: z.number().int().optional()
 });
 
 export const EvidenceSchema = z.object({
