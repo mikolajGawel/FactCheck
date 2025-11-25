@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="pl">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<meta
+			name="description"
+			content="FactCheck - Wtyczka do przeglądarki Chrome pozwalająca na analizę treści artykułów informacyjnych. Walcz z fake newsami i dezinformacją."
+		/>
+		<meta
+			name="keywords"
+			content="FactCheck, fake news, dezinformacja, Chrome, rozszerzenie, AI, sztuczna inteligencja, analiza tekstu"
+		/>
+		<meta name="author" content="Mikołaj Gaweł-Kucab, Wiktor Golicz" />
+		<meta name="theme-color" content="#00b4b4" />
+
+		<!-- Open Graph -->
+		<meta property="og:title" content="FactCheck - Analiza artykułów z AI" />
+		<meta
+			property="og:description"
+			content="Wtyczka do przeglądarki Chrome pozwalająca na analizę treści artykułów informacyjnych przy użyciu sztucznej inteligencji."
+		/>
+		<meta property="og:type" content="website" />
+		<meta property="og:image" content="assets/logo.svg" />
+
+		<title>FactCheck - Twoja Lupa Informacyjna</title>
+
+		<link rel="icon" type="image/svg+xml" href="assets/logo.svg" />
+		<link rel="stylesheet" href="styles.css" />
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link
+			href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+			rel="stylesheet"
+		/>
+	</head>
+	<body>
+		<!-- Header -->
+		<header class="header">
+			<nav class="nav container">
+				<a href="#" class="nav-logo">
+					<img src="assets/logo.svg" alt="FactCheck Logo" class="logo-icon" />
+					<span class="logo-text">FactCheck</span>
+				</a>
+				<ul class="nav-menu">
+					<li><a href="#features" class="nav-link">Funkcje</a></li>
+					<li><a href="#how-it-works" class="nav-link">Jak działa</a></li>
+					<li><a href="#demo" class="nav-link">Demo</a></li>
+					<li><a href="#installation" class="nav-link">Instalacja</a></li>
+					<li><a href="#team" class="nav-link">Zespół</a></li>
+				</ul>
+				<div class="nav-actions">
+					<a href="https://github.com/mikolajGawel/FactCheck" target="_blank" class="theme-toggle">
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							width="24"
+							height="24"
+							viewBox="0 0 24 24"
+							fill="currentColor"
+						>
+							<path
+								d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"
+							/>
+						</svg>
+					</a>
+					<button class="theme-toggle" id="themeToggle" aria-label="Przełącz motyw">
+						<svg
+							class="icon-sun"
+							xmlns="http://www.w3.org/2000/svg"
+							width="24"
+							height="24"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+						>
+							<circle cx="12" cy="12" r="5"></circle>
+							<line x1="12" y1="1" x2="12" y2="3"></line>
+							<line x1="12" y1="21" x2="12" y2="23"></line>
+							<line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+							<line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+							<line x1="1" y1="12" x2="3" y2="12"></line>
+							<line x1="21" y1="12" x2="23" y2="12"></line>
+							<line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+							<line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+						</svg>
+						<svg
+							class="icon-moon"
+							xmlns="http://www.w3.org/2000/svg"
+							width="24"
+							height="24"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+						>
+							<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+						</svg>
+					</button>
+					<button class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Menu">
+						<span></span>
+						<span></span>
+						<span></span>
+					</button>
+				</div>
+			</nav>
+		</header>
+
+		<!-- Hero Section -->
+		<section class="hero">
+			<div class="hero-bg">
+				<!-- removed .hero-gradient and .hero-pattern elements -->
+			</div>
+			<div class="container hero-content">
+				<div class="hero-text">
+					<div class="badge">
+						<span class="badge-icon">🏆</span>
+						<span>Projekt na Hack Heroes 2025</span>
+					</div>
+					<h1 class="hero-title">
+						Twoja <span class="gradient-text">lupa informacyjna</span> w świecie dezinformacji
+					</h1>
+					<p class="hero-description">
+						Rozszerzenie do Chrome wykorzystujące sztuczną inteligencję, które pomoże Ci odróżnić fakty od opinii
+						w artykułach informacyjnych. Walcz z fake newsami i dezinformacją.
+					</p>
+					<div class="hero-actions">
+						<a
+							href="https://github.com/mikolajGawel/FactCheck/releases/download/v1.0.0/FactCheck.zip"
+							download="FactCheck.zip"
+							class="btn btn-primary"
+						>
+							<svg
+								xmlns="http://www.w3.org/2000/svg"
+								width="20"
+								height="20"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+							>
+								<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+								<polyline points="7 10 12 15 17 10"></polyline>
+								<line x1="12" y1="15" x2="12" y2="3"></line>
+							</svg>
+							Pobierz rozszerzenie
+						</a>
+						<a href="#demo" class="btn btn-secondary">
+							<svg
+								xmlns="http://www.w3.org/2000/svg"
+								width="20"
+								height="20"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+							>
+								<polygon points="5 3 19 12 5 21 5 3"></polygon>
+							</svg>
+							Zobacz demo
+						</a>
+					</div>
+					<div class="hero-stats">
+						<div class="stat">
+							<span class="stat-value">AI</span>
+							<span class="stat-label">Powered</span>
+						</div>
+						<div class="stat-divider"></div>
+						<div class="stat">
+							<span class="stat-value">~20s</span>
+							<span class="stat-label">Czas analizy</span>
+						</div>
+						<div class="stat-divider"></div>
+						<div class="stat">
+							<span class="stat-value">100%</span>
+							<span class="stat-label">Darmowe</span>
+						</div>
+					</div>
+				</div>
+				<div class="hero-visual">
+					<div class="hero-image-wrapper">
+						<img src="assets/logo.svg" alt="FactCheck Logo" class="hero-logo" />
+					</div>
+				</div>
+			</div>
+			<div class="hero-scroll-indicator">
+				<span>Przewiń w dół</span>
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					width="24"
+					height="24"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+				>
+					<polyline points="6 9 12 15 18 9"></polyline>
+				</svg>
+			</div>
+		</section>
+
+		<!-- Features Section -->
+		<section class="features" id="features">
+			<div class="container">
+				<div class="section-header">
+					<span class="section-tag">Funkcje</span>
+					<h2 class="section-title">Wszystko, czego potrzebujesz do analizy tekstu</h2>
+					<p class="section-description">
+						FactCheck oferuje zaawansowane narzędzia do analizy artykułów, pomagając Ci zrozumieć, co jest
+						faktem, a co opinią.
+					</p>
+				</div>
+				<div class="features-grid">
+					<div class="feature-card">
+						<div class="feature-icon feature-icon-ai">
+							<svg
+								xmlns="http://www.w3.org/2000/svg"
+								width="28"
+								height="28"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+							>
+								<path
+									d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2"
+								></path>
+								<path d="M7.5 13a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3"></path>
+								<path d="M16.5 13a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3"></path>
+							</svg>
+						</div>
+						<h3 class="feature-title">Sztuczna Inteligencja</h3>
+						<p class="feature-description">
+							Zaawansowane modele AI analizują tekst i klasyfikują każde zdanie jako fakt lub opinię z wysoką
+							dokładnością.
+						</p>
+					</div>
+					<div class="feature-card">
+						<div class="feature-icon feature-icon-colors">
+							<svg
+								xmlns="http://www.w3.org/2000/svg"
+								width="28"
+								height="28"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+							>
+								<circle cx="13.5" cy="6.5" r="2.5"></circle>
+								<circle cx="17.5" cy="10.5" r="2.5"></circle>
+								<circle cx="8.5" cy="7.5" r="2.5"></circle>
+								<circle cx="6.5" cy="12.5" r="2.5"></circle>
+								<path d="M12 22a10 10 0 1 1 0-20 10 10 0 0 1 0 20"></path>
+								<path d="M12 22a6 6 0 0 0 6-6H6a6 6 0 0 0 6 6"></path>
+							</svg>
+						</div>
+						<h3 class="feature-title">Kolorowe oznaczenia</h3>
+						<p class="feature-description">
+							Intuicyjny system kolorów: zielony dla faktów, czerwony dla opinii, szary dla niepewnych
+							fragmentów.
+						</p>
+					</div>
+					<div class="feature-card">
+						<div class="feature-icon feature-icon-tooltip">
+							<svg
+								xmlns="http://www.w3.org/2000/svg"
+								width="28"
+								height="28"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+							>
+								<circle cx="12" cy="12" r="10"></circle>
+								<path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+								<line x1="12" y1="17" x2="12.01" y2="17"></line>
+							</svg>
+						</div>
+						<h3 class="feature-title">Szczegółowe podpowiedzi</h3>
+						<p class="feature-description">
+							Najedź na zaznaczony tekst, aby zobaczyć wyjaśnienie, dlaczego został sklasyfikowany jako fakt
+							lub opinia.
+						</p>
+					</div>
+					<div class="feature-card">
+						<div class="feature-icon feature-icon-cache">
+							<svg
+								xmlns="http://www.w3.org/2000/svg"
+								width="28"
+								height="28"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+							>
+								<path d="M12 2v4"></path>
+								<path d="m16.2 7.8 2.9-2.9"></path>
+								<path d="M18 12h4"></path>
+								<path d="m16.2 16.2 2.9 2.9"></path>
+								<path d="M12 18v4"></path>
+								<path d="m4.9 19.1 2.9-2.9"></path>
+								<path d="M2 12h4"></path>
+								<path d="m4.9 4.9 2.9 2.9"></path>
+							</svg>
+						</div>
+						<h3 class="feature-title">Inteligentny cache</h3>
+						<p class="feature-description">
+							System zapamiętuje przeanalizowane artykuły, zapobiegając ponownej analizie i oszczędzając Twój
+							czas.
+						</p>
+					</div>
+					<div class="feature-card">
+						<div class="feature-icon feature-icon-theme">
+							<svg
+								xmlns="http://www.w3.org/2000/svg"
+								width="28"
+								height="28"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+							>
+								<circle cx="12" cy="12" r="4"></circle>
+								<path d="M12 2v2"></path>
+								<path d="M12 20v2"></path>
+								<path d="m4.93 4.93 1.41 1.41"></path>
+								<path d="m17.66 17.66 1.41 1.41"></path>
+								<path d="M2 12h2"></path>
+								<path d="M20 12h2"></path>
+								<path d="m6.34 17.66-1.41 1.41"></path>
+								<path d="m19.07 4.93-1.41 1.41"></path>
+							</svg>
+						</div>
+						<h3 class="feature-title">Jasny i ciemny motyw</h3>
+						<p class="feature-description">
+							Wtyczka automatycznie dostosowuje się do trybu jasnego lub ciemnego strony, którą przeglądasz.
+						</p>
+					</div>
+					<div class="feature-card">
+						<div class="feature-icon feature-icon-progress">
+							<svg
+								xmlns="http://www.w3.org/2000/svg"
+								width="28"
+								height="28"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+							>
+								<path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
+							</svg>
+						</div>
+						<h3 class="feature-title">Pasek postępu</h3>
+						<p class="feature-description">
+							Śledź postęp analizy w czasie rzeczywistym z przewidywanym czasem oczekiwania.
+						</p>
+					</div>
+				</div>
+			</div>
+		</section>
+
+		<!-- How It Works Section -->
+		<section class="how-it-works" id="how-it-works">
+			<div class="container">
+				<div class="section-header">
+					<span class="section-tag">Jak to działa</span>
+					<h2 class="section-title">Prosta analiza w trzech krokach</h2>
+					<p class="section-description">
+						FactCheck został zaprojektowany tak, aby być intuicyjny i łatwy w użyciu. Oto jak to działa:
+					</p>
+				</div>
+				<div class="steps">
+					<div class="step">
+						<div class="step-number">1</div>
+						<div class="step-content">
+							<h3 class="step-title">Otwórz artykuł</h3>
+							<p class="step-description">
+								Wejdź na dowolny artykuł na stronie z wiadomościami, np. wp.pl, onet.pl, interia.pl lub
+								innej.
+							</p>
+						</div>
+						<div class="step-icon">
+							<svg
+								xmlns="http://www.w3.org/2000/svg"
+								width="48"
+								height="48"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="1.5"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+							>
+								<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+								<path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+							</svg>
+						</div>
+					</div>
+					<div class="step-connector"></div>
+					<div class="step">
+						<div class="step-number">2</div>
+						<div class="step-content">
+							<h3 class="step-title">Uruchom FactCheck</h3>
+							<p class="step-description">
+								Kliknij ikonę rozszerzenia, wybierz artykuł i naciśnij przycisk "Rozpocznij analizę".
+							</p>
+						</div>
+						<div class="step-icon">
+							<svg
+								xmlns="http://www.w3.org/2000/svg"
+								width="48"
+								height="48"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="1.5"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+							>
+								<circle cx="11" cy="11" r="8"></circle>
+								<line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+							</svg>
+						</div>
+					</div>
+					<div class="step-connector"></div>
+					<div class="step">
+						<div class="step-number">3</div>
+						<div class="step-content">
+							<h3 class="step-title">Zobacz wyniki</h3>
+							<p class="step-description">
+								Po około 20 sekundach zobaczysz kolorowe oznaczenia na artykule wskazujące fakty i opinie.
+							</p>
+						</div>
+						<div class="step-icon">
+							<svg
+								xmlns="http://www.w3.org/2000/svg"
+								width="48"
+								height="48"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="1.5"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+							>
+								<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+								<polyline points="22 4 12 14.01 9 11.01"></polyline>
+							</svg>
+						</div>
+					</div>
+				</div>
+			</div>
+		</section>
+
+		<!-- Demo Section -->
+		<section class="demo" id="demo">
+			<div class="container">
+				<div class="section-header">
+					<span class="section-tag">Demonstracja</span>
+					<h2 class="section-title">Zobacz FactCheck w akcji</h2>
+					<p class="section-description">Poniżej możesz zobaczyć, jak wtyczka działa na prawdziwym artykule.</p>
+				</div>
+				<div class="demo-container">
+					<div class="demo-frame">
+						<div class="demo-header">
+							<div class="demo-dots">
+								<span class="demo-dot"></span>
+								<span class="demo-dot"></span>
+								<span class="demo-dot"></span>
+							</div>
+							<div class="demo-title">FactCheck Demo</div>
+						</div>
+						<div class="demo-content">
+							<img
+								src="../preview/preview.gif"
+								alt="Demonstracja działania FactCheck"
+								class="demo-gif"
+								loading="lazy"
+							/>
+						</div>
+					</div>
+				</div>
+			</div>
+		</section>
+
+		<!-- Installation Section -->
+		<section class="installation" id="installation">
+			<div class="container">
+				<div class="section-header">
+					<span class="section-tag">Instalacja</span>
+					<h2 class="section-title">Zainstaluj FactCheck w kilku prostych krokach</h2>
+					<p class="section-description">Wtyczka jest całkowicie darmowa i łatwa do zainstalowania.</p>
+				</div>
+				<div class="installation-steps">
+					<div class="install-step">
+						<div class="install-step-icon">
+							<svg
+								xmlns="http://www.w3.org/2000/svg"
+								width="32"
+								height="32"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+							>
+								<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+								<polyline points="7 10 12 15 17 10"></polyline>
+								<line x1="12" y1="15" x2="12" y2="3"></line>
+							</svg>
+						</div>
+						<div class="install-step-content">
+							<h4>Krok 1: Pobierz wtyczkę</h4>
+							<p>Pobierz najnowszą wersję wtyczki z naszego repozytorium GitHub lub użyj gotowej paczki.</p>
+						</div>
+					</div>
+					<div class="install-step">
+						<div class="install-step-icon">
+							<svg
+								xmlns="http://www.w3.org/2000/svg"
+								width="32"
+								height="32"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+							>
+								<circle cx="12" cy="12" r="10"></circle>
+								<path d="M12 16v-4"></path>
+								<path d="M12 8h.01"></path>
+							</svg>
+						</div>
+						<div class="install-step-content">
+							<h4>Krok 2: Otwórz zarządzanie rozszerzeniami</h4>
+							<p>W przeglądarce Chrome wpisz w pasek adresu: <code>chrome://extensions/</code></p>
+						</div>
+					</div>
+					<div class="install-step">
+						<div class="install-step-icon">
+							<svg
+								xmlns="http://www.w3.org/2000/svg"
+								width="32"
+								height="32"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+							>
+								<path d="M12 20h9"></path>
+								<path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+							</svg>
+						</div>
+						<div class="install-step-content">
+							<h4>Krok 3: Włącz tryb dewelopera</h4>
+							<p>Przełącz przełącznik "Tryb dewelopera" w prawym górnym rogu strony.</p>
+						</div>
+					</div>
+					<div class="install-step">
+						<div class="install-step-icon">
+							<svg
+								xmlns="http://www.w3.org/2000/svg"
+								width="32"
+								height="32"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+							>
+								<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+								<polyline points="22 4 12 14.01 9 11.01"></polyline>
+							</svg>
+						</div>
+						<div class="install-step-content">
+							<h4>Krok 4: Załaduj wtyczkę</h4>
+							<p>Kliknij "Załaduj rozpakowane" i wybierz folder z rozpakowaną wtyczką.</p>
+						</div>
+					</div>
+				</div>
+				<div class="installation-cta">
+					<a
+						href="https://github.com/mikolajGawel/FactCheck/releases/download/v1.0.0/FactCheck.zip"
+						download="FactCheck.zip"
+						class="btn btn-primary btn-large"
+					>
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							width="20"
+							height="20"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+						>
+							<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+							<polyline points="7 10 12 15 17 10"></polyline>
+							<line x1="12" y1="15" x2="12" y2="3"></line>
+						</svg>
+						Pobierz rozszerzenie
+					</a>
+				</div>
+			</div>
+		</section>
+
+		<!-- Tech Stack Section -->
+		<section class="tech-stack">
+			<div class="container">
+				<div class="section-header">
+					<span class="section-tag">Technologie</span>
+					<h2 class="section-title">Zbudowane z najlepszymi narzędziami</h2>
+				</div>
+				<div class="tech-grid">
+					<div class="tech-item">
+						<div class="tech-icon">
+							<svg viewBox="0 0 128 128" width="48" height="48">
+								<path
+									fill="#83CD29"
+									d="M112.771 30.334L68.674 4.729c-2.781-1.584-6.402-1.584-9.205 0L14.901 30.334C12.031 31.985 10 35.088 10 38.407v51.142c0 3.319 2.084 6.423 4.954 8.083l11.775 6.688c5.628 2.772 7.617 2.772 10.178 2.772 8.333 0 13.093-5.039 13.093-13.828v-50.49c0-.713-.371-1.774-1.071-1.774h-5.623c-.712 0-2.306 1.061-2.306 1.773v50.49c0 3.896-3.524 7.773-10.11 4.48L18.723 90.73c-.424-.23-.723-.693-.723-1.181V38.407c0-.482.555-.966.982-1.213l44.424-25.561c.415-.235 1.025-.235 1.439 0l43.882 25.555c.42.253.272.722.272 1.219v51.142c0 .488.183.963-.232 1.198l-44.086 25.576c-.378.227-.847.227-1.261 0l-11.307-6.749c-.341-.198-.746-.269-1.073-.086-3.146 1.783-3.726 2.02-6.677 3.043-.726.253-1.797.692.41 1.929l14.798 8.754a9.294 9.294 0 004.647 1.246c1.642 0 3.25-.426 4.667-1.246l43.885-25.582c2.87-1.672 4.23-4.764 4.23-8.083V38.407c0-3.319-1.36-6.414-4.229-8.073zM77.91 81.445c-11.726 0-14.309-3.235-15.17-9.066-.1-.628-.633-1.379-1.272-1.379h-5.731c-.709 0-1.279.86-1.279 1.566 0 7.466 4.059 16.512 23.453 16.512 14.039 0 22.088-5.455 22.088-15.109 0-9.572-6.467-12.084-20.082-13.886-13.762-1.819-15.16-2.738-15.16-5.962 0-2.658 1.184-6.203 11.374-6.203 9.105 0 12.461 1.954 13.842 8.091.118.577.645 1.137 1.24 1.137h5.754c.354 0 .692-.286.94-.536.249-.249.383-.509.383-.861-.074-8.393-7.362-17.452-22.159-17.452-12.688 0-20.269 5.332-20.269 14.281 0 9.699 7.506 12.378 19.622 13.577 14.505 1.422 15.633 3.542 15.633 6.395 0 4.955-3.978 7.066-13.309 7.066z"
+								/>
+							</svg>
+						</div>
+						<span class="tech-name">Node.js</span>
+					</div>
+					<div class="tech-item">
+						<div class="tech-icon">
+							<svg viewBox="0 0 128 128" width="48" height="48">
+								<path
+									fill="#007acc"
+									d="M2 63.91v62.5h125v-125H2zm100.73-5a15.56 15.56 0 017.82 4.5 20.58 20.58 0 013 4c0 .16-5.4 3.81-8.69 5.85-.12.08-.6-.44-1.13-1.23a7.09 7.09 0 00-5.87-3.53c-3.79-.26-6.23 1.73-6.21 5a4.58 4.58 0 00.54 2.34c.83 1.73 2.38 2.76 7.24 4.86 8.95 3.85 12.78 6.39 15.16 10 2.66 4 3.25 10.46 1.45 15.24-2 5.2-6.9 8.73-13.83 9.9a38.32 38.32 0 01-9.52-.1A23 23 0 0180 109.19c-1.15-1.27-3.39-4.58-3.25-4.82a9.34 9.34 0 011.15-.73l4.6-2.64 3.59-2.08.75 1.11a16.78 16.78 0 004.74 4.54c4 2.1 9.46 1.81 12.16-.62a5.43 5.43 0 00.69-6.92c-1-1.39-3-2.56-8.59-5-6.45-2.78-9.23-4.5-11.77-7.24a16.48 16.48 0 01-3.43-6.25 25 25 0 01-.22-8c1.33-6.23 6-10.58 12.82-11.87a31.66 31.66 0 019.49.26zm-29.34 5.24v5.12H57.16v46.23H45.65V69.26H29.38v-5a49.19 49.19 0 01.14-5.16c.06-.08 10-.12 22-.1h21.81z"
+								/>
+							</svg>
+						</div>
+						<span class="tech-name">TypeScript</span>
+					</div>
+					<div class="tech-item">
+						<div class="tech-icon">
+							<img src="./assets/openrouter.svg" alt="OpenRouter Logo" width="48" height="48" />
+						</div>
+						<span class="tech-name">OpenRouter AI</span>
+					</div>
+					<div class="tech-item">
+						<div class="tech-icon">
+							<svg viewBox="0 0 128 128" width="48" height="48">
+								<circle cx="64" cy="64" r="64" fill="#f7df1e" />
+								<path
+									fill="#323330"
+									d="M42.4 99.6c2 3.2 3.8 6 8.2 6 4.2 0 6.8-1.6 6.8-8v-43h10v43.4c0 13-7.6 19-18.8 19-10 0-15.8-5.2-18.8-11.4l8.6-6zm40.4-1c2.6 4.2 6 7.4 12 7.4 5 0 8.2-2.6 8.2-6 0-4.2-3.2-5.6-8.6-8l-3-1.2c-8.6-3.6-14.2-8.2-14.2-17.8 0-8.8 6.8-15.6 17.4-15.6 7.6 0 13 2.6 16.8 9.4l-9.2 6c-2-3.6-4.2-5-7.6-5-3.4 0-5.6 2.2-5.6 5 0 3.6 2.2 5 7.2 7.2l3 1.2c10 4.4 15.8 8.8 15.8 18.8 0 10.8-8.4 16.6-19.8 16.6-11 0-18.2-5.2-21.6-12.2l9.2-5.8z"
+								/>
+							</svg>
+						</div>
+						<span class="tech-name">JavaScript</span>
+					</div>
+					<div class="tech-item">
+						<div class="tech-icon">
+							<img
+								src="./assets/chrome-extension-logo.svg"
+								alt="Chrome Extension Logo"
+								width="48"
+								height="48"
+							/>
+						</div>
+						<span class="tech-name">Chrome Extension</span>
+					</div>
+					<div class="tech-item">
+						<div class="tech-icon">
+							<img src="./assets/docker-mark-blue.svg" alt="Docker Logo" width="48" height="48" />
+						</div>
+						<span class="tech-name">Docker</span>
+					</div>
+				</div>
+			</div>
+		</section>
+
+		<!-- Team Section -->
+		<section class="team" id="team">
+			<div class="container">
+				<div class="section-header">
+					<span class="section-tag">Zespół</span>
+					<h2 class="section-title">Poznaj twórców</h2>
+					<p class="section-description">
+						Projekt został stworzony przez dwóch pasjonatów programowania na konkurs Hack Heroes 2025.
+					</p>
+				</div>
+				<div class="team-grid">
+					<div class="team-member">
+						<div class="member-avatar">
+							<div class="avatar-placeholder">MG</div>
+						</div>
+						<h3 class="member-name">Mikołaj Gaweł-Kucab</h3>
+						<p class="member-role">Developer</p>
+						<div class="member-social">
+							<a href="https://github.com/mikolajGawel" target="_blank" rel="noopener" aria-label="GitHub">
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									width="20"
+									height="20"
+									viewBox="0 0 24 24"
+									fill="currentColor"
+								>
+									<path
+										d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"
+									/>
+								</svg>
+							</a>
+						</div>
+					</div>
+					<div class="team-member">
+						<div class="member-avatar">
+							<div class="avatar-placeholder">WG</div>
+						</div>
+						<h3 class="member-name">Wiktor Golicz</h3>
+						<p class="member-role">Developer</p>
+						<div class="member-social">
+							<a href="#" target="_blank" rel="noopener" aria-label="GitHub">
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									width="20"
+									height="20"
+									viewBox="0 0 24 24"
+									fill="currentColor"
+								>
+									<path
+										d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"
+									/>
+								</svg>
+							</a>
+						</div>
+					</div>
+				</div>
+				<div class="hackheroes-badge">
+					<div class="hackheroes-content">
+						<span class="hackheroes-icon">🏆</span>
+						<div class="hackheroes-text">
+							<span class="hackheroes-title">Hack Heroes 2025</span>
+							<span class="hackheroes-subtitle">Projekt konkursowy</span>
+						</div>
+					</div>
+					<a
+						href="https://www.hackheroes.pl/index.php/hack-heroes-2025/"
+						target="_blank"
+						rel="noopener"
+						class="hackheroes-link"
+					>
+						Dowiedz się więcej →
+					</a>
+				</div>
+			</div>
+		</section>
+
+		<!-- Footer -->
+		<footer class="footer">
+			<div class="container">
+				<div class="footer-content">
+					<div class="footer-brand">
+						<a href="#" class="footer-logo">
+							<img src="assets/logo.svg" alt="FactCheck Logo" class="logo-icon" />
+							<span class="logo-text">FactCheck</span>
+						</a>
+						<p class="footer-description">Twoja lupa informacyjna w walce z dezinformacją i fake newsami.</p>
+					</div>
+					<div class="footer-links">
+						<div class="footer-column">
+							<h4>Nawigacja</h4>
+							<ul>
+								<li><a href="#features">Funkcje</a></li>
+								<li><a href="#how-it-works">Jak działa</a></li>
+								<li><a href="#demo">Demo</a></li>
+								<li><a href="#installation">Instalacja</a></li>
+							</ul>
+						</div>
+						<div class="footer-column">
+							<h4>Zasoby</h4>
+							<ul>
+								<li>
+									<a href="https://github.com/mikolajGawel/FactCheck" target="_blank" rel="noopener"
+										>GitHub</a
+									>
+								</li>
+								<li><a href="https://www.hackheroes.pl" target="_blank" rel="noopener">Hack Heroes</a></li>
+							</ul>
+						</div>
+					</div>
+				</div>
+				<div class="footer-bottom">
+					<p>&copy; 2025 FactCheck. Projekt na konkurs Hack Heroes 2025.</p>
+				</div>
+			</div>
+		</footer>
+
+		<script src="main.js"></script>
+	</body>
+</html>

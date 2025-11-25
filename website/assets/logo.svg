@@ -1,0 +1,194 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="48"
+   height="48"
+   viewBox="0 0 48 48"
+   version="1.1"
+   id="svg1"
+   sodipodi:docname="logo.svg"
+   inkscape:version="1.4.2 (f4327f4, 2025-05-13)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview1"
+     pagecolor="#505050"
+     bordercolor="#ffffff"
+     borderopacity="1"
+     inkscape:showpageshadow="0"
+     inkscape:pageopacity="0"
+     inkscape:pagecheckerboard="1"
+     inkscape:deskcolor="#505050"
+     inkscape:document-units="px"
+     showguides="true"
+     inkscape:zoom="12.239583"
+     inkscape:cx="47.18298"
+     inkscape:cy="32.721703"
+     inkscape:window-width="3440"
+     inkscape:window-height="1377"
+     inkscape:window-x="-8"
+     inkscape:window-y="-8"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="layer4" />
+  <defs
+     id="defs1" />
+  <g
+     inkscape:groupmode="layer"
+     id="layer4"
+     inkscape:label="Cloud"
+     transform="matrix(0.81226612,0,0,0.82928944,-1.8474889,8.2658625)">
+    <ellipse
+       style="fill:#e6e6e6;stroke-width:1.0511"
+       id="path1"
+       cx="40.992657"
+       cy="6.2400608"
+       rx="5.6670427"
+       ry="5.6455746" />
+    <ellipse
+       style="fill:#e6e6e6;stroke-width:1.48183"
+       id="path3"
+       cx="48.858852"
+       cy="5.2373734"
+       rx="9.7693052"
+       ry="7.5201664" />
+    <ellipse
+       style="fill:#e6e6e6;stroke-width:1.0067"
+       id="path4"
+       cx="55.428188"
+       cy="7.2914915"
+       rx="5.2864199"
+       ry="5.0788379" />
+  </g>
+  <g
+     inkscape:label="Warstwa 1"
+     inkscape:groupmode="layer"
+     id="layer1"
+     transform="matrix(0.81226612,0,0,0.82928944,-1.4493057,7.8593343)">
+    <rect
+       style="fill:#ffffff;fill-opacity:1;stroke:none;stroke-width:1.07079;stroke-opacity:1;paint-order:fill markers stroke"
+       id="rect1"
+       width="25.369116"
+       height="40.063969"
+       x="15.786622"
+       y="0.95391488"
+       ry="2.0053778" />
+  </g>
+  <g
+     inkscape:groupmode="layer"
+     id="layer2"
+     inkscape:label="Doc_text"
+     transform="matrix(0.81226612,0,0,0.82928944,-1.4493057,7.8593343)">
+    <rect
+       style="fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.0131688;stroke-dasharray:none;stroke-opacity:1;paint-order:fill markers stroke"
+       id="rect2"
+       width="22.856407"
+       height="1.0563765"
+       x="17.217108"
+       y="2.5233409"
+       ry="0.52818823"
+       rx="0.68741083" />
+    <rect
+       style="fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.0131688;stroke-dasharray:none;stroke-opacity:1;paint-order:fill markers stroke"
+       id="rect2-8"
+       width="22.856407"
+       height="1.0563765"
+       x="17.213528"
+       y="5.9316225"
+       ry="0.52818823"
+       rx="0.68741083" />
+    <rect
+       style="fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.0131688;stroke-dasharray:none;stroke-opacity:1;paint-order:fill markers stroke"
+       id="rect2-2"
+       width="22.856407"
+       height="1.0563765"
+       x="17.148186"
+       y="9.38832"
+       ry="0.52818823"
+       rx="0.68741083" />
+    <rect
+       style="fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.0131688;stroke-dasharray:none;stroke-opacity:1;paint-order:fill markers stroke"
+       id="rect2-8-3"
+       width="22.856407"
+       height="1.0563765"
+       x="17.144608"
+       y="12.796602"
+       ry="0.52818823"
+       rx="0.68741083" />
+    <rect
+       style="fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.0137717;stroke-dasharray:none;stroke-opacity:1;paint-order:fill markers stroke"
+       id="rect2-2-3"
+       width="22.768623"
+       height="1.1597517"
+       x="16.998577"
+       y="16.283363"
+       ry="0.57987583"
+       rx="0.6847707" />
+    <rect
+       style="fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.0118371;stroke-dasharray:none;stroke-opacity:1;paint-order:fill markers stroke"
+       id="rect2-8-3-8"
+       width="18.467289"
+       height="1.0563765"
+       x="17.170565"
+       y="20.004902"
+       ry="0.52818823"
+       rx="0.55540711" />
+    <rect
+       style="fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.0102419;stroke-dasharray:none;stroke-opacity:1;paint-order:fill markers stroke"
+       id="rect2-8-3-8-8"
+       width="13.81482"
+       height="1.0563765"
+       x="16.878414"
+       y="23.495344"
+       ry="0.52818823"
+       rx="0.41548333" />
+  </g>
+  <g
+     inkscape:groupmode="layer"
+     id="layer4-8"
+     inkscape:label="Cloud"
+     transform="matrix(0.81226612,0,0,0.82928944,-26.567339,29.895848)">
+    <ellipse
+       style="fill:#e6e6e6;stroke-width:1.0511"
+       id="path1-8"
+       cx="38.727818"
+       cy="7.9921155"
+       rx="5.6670427"
+       ry="5.6455746" />
+    <ellipse
+       style="fill:#e6e6e6;stroke-width:1.48183"
+       id="path3-2"
+       cx="46.594013"
+       cy="6.9894285"
+       rx="9.7693052"
+       ry="7.5201664" />
+    <ellipse
+       style="fill:#e6e6e6;stroke-width:1.0067"
+       id="path4-4"
+       cx="54.460201"
+       cy="9.7795172"
+       rx="5.2864199"
+       ry="5.0788379" />
+  </g>
+  <g
+     inkscape:groupmode="layer"
+     id="layer3"
+     inkscape:label="Glass"
+     transform="matrix(0.81226612,0,0,0.82928944,-1.4493057,7.8593343)">
+    <ellipse
+       style="fill:#008080;fill-opacity:0;stroke:#00b4b4;stroke-width:2.67804;stroke-dasharray:none;stroke-opacity:1;paint-order:fill markers stroke"
+       id="path2"
+       cx="33.103325"
+       cy="18.167654"
+       rx="11.63276"
+       ry="11.944468" />
+    <path
+       style="fill:#008080;fill-opacity:1;fill-rule:evenodd;stroke:#00b4b4;stroke-width:2.46283;stroke-linecap:round;stroke-linejoin:miter;stroke-dasharray:none;stroke-opacity:1"
+       d="M 40.350374,27.868653 50.902535,45.501377"
+       id="path9"
+       inkscape:connector-type="polyline"
+       inkscape:connector-curvature="0" />
+  </g>
+</svg>
