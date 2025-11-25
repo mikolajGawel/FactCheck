@@ -1,6 +1,6 @@
 {
     "name": "FactCheck",
-    "description": "FactCheck pomaga Ci walczyć z fake newsami! Za pomocą AI klasyfikuje treści jako fakty i opinie.\nAutorzy: Mikołaj Gaweł-Kucab i Wiktor Golicz.",
+    "description": "Wtyczka służąca do weryfikacji treści. Używając AI stwierdza czy dana część tekstu jest faktem czy opinią.\nAutorzy: Mikołaj Gaweł i Wiktor Golicz.",
     "version": "1.0.0",
     "manifest_version": 3,
     "icons": {
