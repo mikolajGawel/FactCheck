@@ -16,18 +16,15 @@ export function collectArticleText(articleId: number): string {
 	return buildArticleContext(articleId).text;
 }
 
-export function buildArticleContext(articleId?: number): HighlightContext {
-	if (typeof articleId === "number") {
-		const node = getArticleNodes()[articleId];
-		if (node) {
-			return createContextFromNode(node, articleId, "article");
-		}
-	}
-
-	return buildDocumentContext();
+export function buildArticleContext(articleId: number): HighlightContext {
+	const nodes = getArticleNodes();
+	const node = nodes[articleId];
+	if (!node) throw new Error(`Article node with ID ${articleId} not found`);
+	return createContextFromNode(node, articleId, "article");
 }
 
 export function buildDocumentContext(): HighlightContext {
+	console.log("buildDocumentContext");
 	const root = getRootElement();
 	const snapshot = createTextSnapshot(root, HIGHLIGHT_IGNORE_SELECTOR);
 	return {

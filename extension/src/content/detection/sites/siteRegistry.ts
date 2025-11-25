@@ -83,10 +83,10 @@ export class SiteHandlerRegistry {
 	}
 
 	/**
-	 * Find the first matching handler for the current page
+	 * Find all matching handlers for the current page
 	 */
-	findMatch(): SiteHandler | null {
-		return this.handlers.find(h => h.matches()) ?? null;
+	findMatches(): SiteHandler[] {
+		return this.handlers.filter(h => h.matches());
 	}
 
 	/**

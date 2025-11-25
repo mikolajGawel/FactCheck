@@ -76,20 +76,6 @@ export function createDefaultRegistry(): SiteHandlerRegistry {
 		)
 	);
 
-	// Common article body selectors (fallback for many sites)
-	registry.register(
-		new SelectorBasedHandler(
-			"generic-article-body",
-			/.*/,
-			{
-				selectors: [".articleBody", ".article-body", "[class*='articleBody']"],
-				teaserMaxLength: 600
-			},
-			isLikelyTeaser,
-			filterOutNested
-		)
-	);
-
 	// Standard HTML5 <article> tag (most generic, usually last)
 	registry.register(
 		new SelectorBasedHandler(
@@ -97,6 +83,20 @@ export function createDefaultRegistry(): SiteHandlerRegistry {
 			/.*/,
 			{
 				selectors: ["article"],
+				teaserMaxLength: 600
+			},
+			isLikelyTeaser,
+			filterOutNested
+		)
+	);
+
+	// Common article body selectors (fallback for many sites)
+	registry.register(
+		new SelectorBasedHandler(
+			"generic-article-body",
+			/.*/,
+			{
+				selectors: [".articleBody", ".article-body", "[class*='articleBody']"],
 				teaserMaxLength: 600
 			},
 			isLikelyTeaser,

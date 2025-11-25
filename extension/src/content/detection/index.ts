@@ -2,7 +2,6 @@ import { createTextSnapshot } from "../textSnapshot";
 import { HIGHLIGHT_IGNORE_SELECTOR } from "../constants";
 import { ArticleSummary } from "../../types/highlightTypes";
 
-import { isLikelyTeaser } from "./domUtils";
 import { createDefaultRegistry } from "./sites/siteSelectors";
 import { countSentences, createSnippet } from "./textUtils";
 import { findArticleTitle, generateTitle, createTitleState } from "./titleUtils";
@@ -31,32 +30,14 @@ export function getSiteRegistry(): any {
  * Uses site-specific heuristics and fallback strategies
  */
 export function getArticleNodes(): HTMLElement[] {
-	// Try site-specific handlers first
-	const matchedHandler = siteRegistry.findMatch();
-	if (matchedHandler) {
+	const matchedHandlers = siteRegistry.findMatches();
+	for (const matchedHandler of matchedHandlers) {
 		const nodes = matchedHandler.detect();
 		if (nodes) return nodes;
 	}
 
-	// Fallback: large blocks with many paragraphs
-	return findLargeTextBlocks();
-}
-
-/**
- * Fallback heuristic: find large div/section blocks with substantial content
- */
-function findLargeTextBlocks(): HTMLElement[] {
-	const candidates = document.querySelectorAll<HTMLElement>("div, section");
-
-	const best = Array.from(candidates)
-		.filter(el => !isLikelyTeaser(el))
-		.find(el => {
-			const paragraphs = el.querySelectorAll("p").length;
-			const textLength = el.textContent?.length ?? 0;
-			return paragraphs > 5 && textLength > 800;
-		});
-
-	return best ? [best] : [];
+	console.warn("No article nodes detected on this page.");
+	return [];
 }
 
 /**
