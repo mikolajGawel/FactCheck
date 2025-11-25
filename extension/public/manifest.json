@@ -1,8 +1,11 @@
 {
     "name": "FactCheck",
-    "description": "Wtyczka do przeglądarki Chrome do analizowania dokumentów za pomocą AI. Utworzona przez Mikołaja Gaweł-Kucab i Wiktora Golicza.",
-    "version": "0.1",
+    "description": "FactCheck pomaga Ci walczyć z fake newsami! Za pomocą AI klasyfikuje treści jako fakty i opinie.\nAutorzy: Mikołaj Gaweł-Kucab i Wiktor Golicz.",
+    "version": "1.0.0",
     "manifest_version": 3,
+    "icons": {
+        "128": "logo.png"
+    },
     "action": {
         "default_icon": "logo.png",
         "default_popup": "popup.html"
