@@ -96,8 +96,8 @@ Location: `server/src/utils/textUtils.ts`
         - **Anchors outside paragraphs (`skipAI` handling):**
 
             - When encountering `<a>`:
-                - It checks the last entries in the `path` to infer parent/grandparent tags.
-                - If neither parent nor grandparent is a `<p>`, then:
+                - It checks the entries in the `path` to infer parent tags.
+                - If neither element in path is a `<p>`, then:
                     - `nextSkipAI = true` for this subtree.
                     - The text is **still extracted** into blocks, but blocks are marked `skipAI: true`.
                     - This keeps offsets consistent with the frontend, but allows the classifier to ignore such sentences.

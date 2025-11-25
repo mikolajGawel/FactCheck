@@ -195,14 +195,14 @@ export function parseHtmlToBlocks(html: string): TextBlock[] {
 
 			// Handle <a> tags: include text but mark for AI skipping if outside paragraphs.
 			// This ensures offset alignment - frontend includes this text, backend must too.
-			// Only allow traversing anchors when their parent or grandparent is a <p>.
+			// Only allow traversing anchors when they are inside a <p> element anywhere in the ancestor path.
 			let nextSkipAI = skipAIForNode;
 			let nextSkipAIHard = skipAIHardForNode;
 
 			if (tagName === "a") {
-				const parentTag = path.length ? getTagNameFromPathEntry(path[path.length - 1]) : "";
-				const grandParentTag = path.length > 1 ? getTagNameFromPathEntry(path[path.length - 2]) : "";
-				if (parentTag !== "p" && grandParentTag !== "p") {
+				// Check if any ancestor in the path is a <p> tag
+				const isInsideParagraph = path.some(pathEntry => getTagNameFromPathEntry(pathEntry) === "p");
+				if (!isInsideParagraph) {
 					// Mark for AI skip but INCLUDE the text (for offset alignment)
 					nextSkipAI = true;
 					// Also mark as "hard skip" so we can drop sentences entirely from these regions

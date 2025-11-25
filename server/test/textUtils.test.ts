@@ -76,6 +76,7 @@ test.describe("segmentSentencesWithStructure keeps shallow paragraph children to
 		assert.equal(processed[1].text, "Now sentence 2 is starting with dot inside span.");
 	});
 
+	// LINKS
 	test("omits sentences that end within a link", () => {
 		const html = `<span>Przeczytaj także: <a href="" data-allow-layer="">Kłamliwy wpis Instytutu Jad Waszem. Były ambasador Polski reaguje. "To skandal"</a></span>`;
 		const processed = testCase(html);
@@ -87,6 +88,20 @@ test.describe("segmentSentencesWithStructure keeps shallow paragraph children to
 		const processed = testCase(html);
 		assert.equal(processed.length, 1);
 		assert.equal(processed[0].text, "Read more in this article.");
+	});
+
+	test("preserves sentences in bolded paragraph links", () => {
+		const html = "<p>Prezydent skrytykował także <b><a>Niemcy</a> oraz UE</b> w bezpieczeństwa.</p>";
+		const processed = testCase(html);
+		assert.equal(processed.length, 1);
+		assert.equal(processed[0].text, "Prezydent skrytykował także Niemcy oraz UE w bezpieczeństwa.");
+	});
+
+	test("preserves sentences in bolded paragraph links when also enclosed with a span", () => {
+		const html = "<p><span>Prezydent skrytykował także <b><a>Niemcy</a> oraz UE</b> w bezpieczeństwa.</span></p>";
+		const processed = testCase(html);
+		assert.equal(processed.length, 1);
+		assert.equal(processed[0].text, "Prezydent skrytykował także Niemcy oraz UE w bezpieczeństwa.");
 	});
 
 	test("preserves non-link sentences in mixed containers", () => {
@@ -110,6 +125,7 @@ test.describe("segmentSentencesWithStructure keeps shallow paragraph children to
 		assert.equal(processed.length, 0);
 	});
 
+	// OTHER
 	test("parseHtmlToBlocks ignores specified tags", () => {
 		const html = "<p>Fact.</p><nav>Menu</nav><footer>Footer</footer><button>Click</button>";
 		const blocks = parseHtmlToBlocks(html);
