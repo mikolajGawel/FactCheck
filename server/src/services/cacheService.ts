@@ -62,9 +62,10 @@ export function buildCacheKey(payload) {
 }
 
 export function readCache(key) {
+	return null; // Disable cache reads for now
 	const cached = cacheStore.get(key);
 	if (!cached) return null;
-	return cached.result; // TTL validation disabled for now — return cached result if present
+	return cached?.result; // TTL validation disabled for now — return cached result if present
 }
 
 export function writeCache(key, result) {
