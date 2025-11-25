@@ -93,6 +93,8 @@ export function computeEstimateSecondsFromArticle(article) {
 	return computeEstimateSecondsFromText(snippet);
 }
 
+const estimatedSegmentPerSeconds = 0.7; 
+
 export function computeEstimateSecondsFromText(text) {
 	const snippet = (text || "").trim();
 	let sentences = 0;
@@ -101,8 +103,7 @@ export function computeEstimateSecondsFromText(text) {
 	} catch (e) {
 		sentences = snippet ? Math.max(1, (snippet.match(/[.!?]+/g) || []).length) : 1;
 	}
-	const secondsPerSentence = 0.5;
-	const estimatedSeconds = Math.max(1, Math.round(sentences * secondsPerSentence));
+	const estimatedSeconds = Math.max(1, Math.round(sentences * estimatedSegmentPerSeconds));
 	progressState.estimateSentences = sentences;
 	return estimatedSeconds;
 }

@@ -39,12 +39,20 @@ async function setJobState(newState) {
 }
 
 async function getJobState() {
-	const tab = await queryActiveTab();
-	return new Promise(resolve => {
-		chrome.runtime.sendMessage({ type: "getJobState", tabId: tab.id }, response => {
-			resolve(response?.jobState ?? 0);
-		});
-	});
+    const tab = await queryActiveTab();
+    return new Promise(resolve => {
+        chrome.runtime.sendMessage({ type: "getGlobalJobState" }, response => {
+            if (!response) {
+                resolve(0);
+                return;
+            }
+            if (response.running && response.tabId === tab.id) {
+                resolve(1);
+                return;
+            }
+            resolve(0);
+        });
+    });
 }
 
 async function ensureContentScript(tabId) {
@@ -52,7 +60,7 @@ async function ensureContentScript(tabId) {
 		chrome.tabs.sendMessage(tabId, { type: "ping" }, res => {
 			if (!chrome.runtime.lastError && res?.status === "pong") {
 				resolve(true);
-				return;
+				return; 
 			}
 			chrome.scripting.executeScript({ target: { tabId }, files: ["content.js"] }, () => {
 				resolve(!chrome.runtime.lastError);

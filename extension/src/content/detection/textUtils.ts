@@ -20,7 +20,7 @@ export function countSentences(text: string): number {
 
 /**
  * Convert integer to upper-case Roman numeral
- * Used for "Part II", "Part III" style suffixes
+ * Used for "cz. II", "cz. III" style suffixes
  */
 export function toRoman(num: number): string {
 	if (num <= 0) return String(num);
