@@ -30,10 +30,17 @@ Po zakończonej analizie części artykułu zostaną pozaznaczane na 3 kolory:
 ## Dodatkowa funkcjonalność
 
 - Wsparcie dla jasnego i ciemnego trybu artykułu
-- Cache przeanalizowanych dokumentów w celu zapobiegania ponownej analizie tego samego artykułu
 - Podpowiedzi określające czemu dana część artykułu jest oceniona jako fakt albo opinia
 - Pasek progresu wraz z przewidywanym czasem oczekiwania
+## Oficjalnie obsługiwane strony
 
+- [Onet](https://www.onet.pl/)
+- [Wirtualna Polska](https://www.wp.pl/)
+- [Interia](https://www.interia.pl/)
+- [Gazeta.pl](https://www.gazeta.pl/0,0.html)
+- [TVN24](https://tvn24.pl/)
+- [O2](https://www.o2.pl/)
+- [TVRepublika](https://tvrepublika.pl/)
 ## Uruchomienie wtyczki
 
 1. Pierwszym krokiem jest pobranie gotowej wersji(rekomendowane) wtyczki albo [skompilowanie własnej z kodu źródłowego](#kompilacja-wtyczki-z-kodu-źródłowego)
